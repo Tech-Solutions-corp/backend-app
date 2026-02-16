@@ -1,4 +1,4 @@
-# 💰 Financial Control API
+# 💰 Tech Solutions 
 
 API REST desenvolvida com Spring Boot para atender uma aplicação mobile de **controle de gastos financeiros**.
 
