@@ -54,6 +54,7 @@ Authorization: Bearer {token}
 Requisições protegidas são autorizadas via filtro de segurança
 
 ## 📦 Estrutura do Projeto
+```
 src/main/java/org/tech_solutions/application
 ├── controller
 ├── exception
@@ -61,7 +62,7 @@ src/main/java/org/tech_solutions/application
 ├── repository
 ├── security
 └── service
-
+```
 
 ### Separação por responsabilidade:
 
@@ -86,12 +87,6 @@ Migrações gerenciadas pelo Flyway
 Scripts localizados em:
 
 src/main/resources/db/migration
-
-
-Exemplo de migration:
-
-V1__create_user_table.sql
-V2__create_transaction_table.sql
 
 ## 📊 Funcionalidades Principais
 ### 👤 Usuário
@@ -126,11 +121,9 @@ spring:
         username: root
         password: sua_senha
 ```
-flyway:
-enabled: true
 
 ### 3️⃣ Execute a aplicação
-`mvn spring-boot:run`
+` mvn spring-boot:run `
 
 ## 🧠 Conceitos Importantes Aplicados
 ### 🔹 JWT
