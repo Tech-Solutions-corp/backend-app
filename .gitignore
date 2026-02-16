@@ -1,33 +1,77 @@
-HELP.md
+############################################
+# Compiled class files
+############################################
+*.class
+
+############################################
+# Logs
+############################################
+*.log
+logs/
+spring.log
+
+############################################
+# Maven
+############################################
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+############################################
+# Gradle
+############################################
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-### IntelliJ IDEA ###
-.idea
+############################################
+# IDE - IntelliJ
+############################################
+.idea/
 *.iws
 *.iml
 *.ipr
+out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+############################################
+# IDE - Eclipse
+############################################
+.project
+.classpath
+.settings/
+bin/
 
-### VS Code ###
+############################################
+# IDE - VS Code
+############################################
 .vscode/
+
+############################################
+# OS Files
+############################################
+.DS_Store
+Thumbs.db
+
+############################################
+# Environment files
+############################################
+.env
+.env.*
+application-local.properties
+application-dev.properties
+
+############################################
+# Docker
+############################################
+*.tar
+docker-compose.override.yml
+
+############################################
+# Temporary
+############################################
+tmp/
+temp/
