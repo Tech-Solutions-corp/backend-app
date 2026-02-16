@@ -32,7 +32,7 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
 
         ErrorDTO errorResponse = new ErrorDTO(
                 HttpStatus.UNAUTHORIZED.value(),
-                "Acesso não autorizado. Token inválido ou ausente"
+                "Acesso nao autorizado. Token invalido ou ausente"
         );
 
         response.getWriter().write(mapper.writeValueAsString(errorResponse));

@@ -13,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.tech_solutions.application.security.TokenManager;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -43,7 +44,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     .ifPresent(this::autenticarUsuario);
 
         } catch (Exception e) {
-            LOGGER.error("Erro ao processar autenticação: {}", e.getMessage());
+            LOGGER.error("Erro ao processar autenticaçao: {}", e.getMessage());
         }
         filterChain.doFilter(request, response);
     }

@@ -18,7 +18,7 @@ public class AuthManager implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return repository.findByEmail(username)
                 .orElseThrow(
-                        () -> new UsernameNotFoundException("Usuario não encontrado para o email: "+ username)
+                        () -> new UsernameNotFoundException("Usuario nao encontrado para o email: "+ username)
                 );
 
     }

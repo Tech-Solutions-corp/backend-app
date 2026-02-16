@@ -26,8 +26,12 @@ public class SecurityConfig {
     private final AuthTokenFilter tokenFilter;
 
     private static final String[] URLS_PUBLICAS = {
-        "/usuarios/auth",
-        "/usuarios/cadastro"
+        "/v3/api-docs/**",
+        "/swagger-ui/**",
+        "/swagger-ui.html",
+        "/swagger-resources/**",
+        "/v*/usuarios/auth",
+        "/v*/usuarios/cadastro"
     };
 
     public SecurityConfig(

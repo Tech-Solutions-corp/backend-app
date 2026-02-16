@@ -14,7 +14,7 @@ import org.tech_solutions.application.service.UsuarioService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/usuarios")
+@RequestMapping("/v1/usuarios")
 public class UsuarioController {
     private final AuthService authService;
     private final UsuarioService usuarioService;
@@ -24,7 +24,7 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
-    @GetMapping("/auth")
+    @PostMapping("/auth")
     public ResponseEntity<UsuarioLogadoDTO> login(@Valid @RequestBody LoginDTO request) {
         UsuarioLogadoDTO response = authService.autenticar(request);
         return ResponseEntity.status(200).body(response);

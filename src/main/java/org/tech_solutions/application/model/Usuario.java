@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 @Entity
-@Table( name = "usuario" )
+@Table( name = "usuarios" )
 public class Usuario implements UserDetails {
 
     @Id
@@ -18,6 +18,9 @@ public class Usuario implements UserDetails {
     private String senha;
     private String email;
     private String telefone;
+
+    public Usuario() {
+    }
 
     public Usuario(String nome, String senha, String email, String telefone) {
         this.nome = nome;

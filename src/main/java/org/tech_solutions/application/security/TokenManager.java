@@ -54,7 +54,7 @@ public class TokenManager {
         } catch (MalformedJwtException e) {
             LOGGER.debug("Token malformado");
         } catch (SignatureException e) {
-            LOGGER.debug("Assinatura inválida");
+            LOGGER.debug("Assinatura invalida");
         } catch (Exception e) {
             LOGGER.debug("Erro ao parsear token: {}", e.getMessage());
         }
