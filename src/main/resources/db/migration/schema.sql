@@ -6,7 +6,6 @@ CREATE
 DATABASE IF NOT EXISTS financeiro_app;
 USE
 financeiro_app;
-
 -- =====================================================
 -- TABELA DE USUÁRIOS
 -- =====================================================
@@ -63,26 +62,26 @@ CREATE TABLE categories
 
 CREATE TABLE transactions
 (
-    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id          BIGINT         NOT NULL,
-    account_id       BIGINT         NOT NULL,
-    category_id      BIGINT         NOT NULL,
-    description      VARCHAR(255),
-    amount           DECIMAL(15, 2) NOT NULL,
-    transaction_date DATE           NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    account_id BIGINT NOT NULL,
+    category_id BIGINT NULL,  -- 👈 agora permite NULL
+    transaction_description VARCHAR(255),
+    amount DECIMAL(15,2) NOT NULL,
+    transaction_date DATE NOT NULL,
     transaction_type ENUM('INCOME', 'EXPENSE') NOT NULL,
-    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_transactions_user
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        FOREIGN KEY (user_id) REFERENCES users(id)
             ON DELETE CASCADE,
 
     CONSTRAINT fk_transactions_account
-        FOREIGN KEY (account_id) REFERENCES accounts (id)
+        FOREIGN KEY (account_id) REFERENCES accounts(id)
             ON DELETE CASCADE,
 
     CONSTRAINT fk_transactions_category
-        FOREIGN KEY (category_id) REFERENCES categories (id)
+        FOREIGN KEY (category_id) REFERENCES categories(id)
             ON DELETE SET NULL
 );
 
@@ -137,19 +136,3 @@ CREATE TABLE ai_insights
         FOREIGN KEY (user_id) REFERENCES users (id)
             ON DELETE CASCADE
 );
-
--- =====================================================
--- ÍNDICES IMPORTANTES PARA PERFORMANCE
--- =====================================================
-
-CREATE INDEX idx_transactions_user_date
-    ON transactions (user_id, transaction_date);
-
-CREATE INDEX idx_transactions_account
-    ON transactions (account_id);
-
-CREATE INDEX idx_categories_user
-    ON categories (user_id);
-
-CREATE INDEX idx_accounts_user
-    ON accounts (user_id);
