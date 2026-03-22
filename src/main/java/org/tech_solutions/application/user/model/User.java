@@ -1,4 +1,4 @@
-package org.tech_solutions.application.model;
+package org.tech_solutions.application.user.model;
 
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;

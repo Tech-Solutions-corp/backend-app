@@ -1,8 +1,8 @@
-package org.tech_solutions.application.controller.user;
+package org.tech_solutions.application.user.mapper;
 
-import org.tech_solutions.application.controller.dto.UserRegisterDTO;
-import org.tech_solutions.application.controller.dto.UserDataDTO;
-import org.tech_solutions.application.model.User;
+import org.tech_solutions.application.user.dto.UserRegisterDTO;
+import org.tech_solutions.application.user.dto.UserDataDTO;
+import org.tech_solutions.application.user.model.User;
 
 import java.util.List;
 
@@ -19,7 +19,9 @@ public class UserMapper {
         return new UserDataDTO(
                 user.getId(),
                 user.getName(),
-                user.getEmail()
+                user.getEmail(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
                 );
     }
 

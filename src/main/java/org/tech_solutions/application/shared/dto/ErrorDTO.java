@@ -1,4 +1,4 @@
-package org.tech_solutions.application.controller.dto;
+package org.tech_solutions.application.shared.dto;
 
 import java.time.Instant;
 

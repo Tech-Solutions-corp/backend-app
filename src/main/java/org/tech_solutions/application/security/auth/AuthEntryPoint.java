@@ -8,7 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
-import org.tech_solutions.application.controller.dto.ErrorDTO;
+import org.tech_solutions.application.shared.dto.ErrorDTO;
 
 import java.io.IOException;
 

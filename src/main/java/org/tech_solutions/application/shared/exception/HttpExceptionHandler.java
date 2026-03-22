@@ -1,4 +1,4 @@
-package org.tech_solutions.application.controller;
+package org.tech_solutions.application.shared.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,8 +8,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
-import org.tech_solutions.application.controller.dto.ErrorDTO;
-import org.tech_solutions.application.exception.ExistingEntityException;
+import org.tech_solutions.application.shared.dto.ErrorDTO;
 
 @RestControllerAdvice
 public class HttpExceptionHandler {

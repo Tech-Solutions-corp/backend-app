@@ -1,10 +1,10 @@
-package org.tech_solutions.application.service;
+package org.tech_solutions.application.user.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.tech_solutions.application.exception.ExistingEntityException;
-import org.tech_solutions.application.model.User;
-import org.tech_solutions.application.repository.UserRepository;
+import org.tech_solutions.application.shared.exception.ExistingEntityException;
+import org.tech_solutions.application.user.model.User;
+import org.tech_solutions.application.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

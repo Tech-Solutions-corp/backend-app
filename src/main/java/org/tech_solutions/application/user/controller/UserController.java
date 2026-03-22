@@ -1,15 +1,16 @@
-package org.tech_solutions.application.controller.user;
+package org.tech_solutions.application.user.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.tech_solutions.application.controller.dto.UserRegisterDTO;
-import org.tech_solutions.application.controller.dto.UserDataDTO;
-import org.tech_solutions.application.controller.dto.LoginDTO;
-import org.tech_solutions.application.controller.dto.UserLogedDTO;
-import org.tech_solutions.application.model.User;
-import org.tech_solutions.application.service.AuthService;
-import org.tech_solutions.application.service.UserService;
+import org.tech_solutions.application.user.dto.UserRegisterDTO;
+import org.tech_solutions.application.user.dto.UserDataDTO;
+import org.tech_solutions.application.auth.dto.LoginDTO;
+import org.tech_solutions.application.user.dto.UserLogedDTO;
+import org.tech_solutions.application.user.mapper.UserMapper;
+import org.tech_solutions.application.user.model.User;
+import org.tech_solutions.application.auth.service.AuthService;
+import org.tech_solutions.application.user.service.UserService;
 
 import java.util.List;
 
