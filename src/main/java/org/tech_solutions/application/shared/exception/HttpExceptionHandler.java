@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -23,6 +24,26 @@ public class HttpExceptionHandler {
         return ResponseEntity.status(409).body(response);
     }
 
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorDTO> entidadeNaoEncontradaHandler(EntityNotFoundException ex) {
+        var response = new ErrorDTO(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorDTO> handleValidationError(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Dados invalidos")
+                .orElse("Dados invalidos");
+
+        ErrorDTO error = new ErrorDTO(HttpStatus.BAD_REQUEST.value(), message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorDTO> handleNotFound(NoHandlerFoundException ex) {
         ErrorDTO error = new ErrorDTO(
@@ -36,10 +57,14 @@ public class HttpExceptionHandler {
     public ResponseEntity<ErrorDTO> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException ex) {
 
+        String supportedMethods = ex.getSupportedMethods() == null
+                ? "nenhum"
+                : String.join(", ", ex.getSupportedMethods());
+
         String message = String.format(
                 "Método %s não suportado para este endpoint. Métodos permitidos: %s",
                 ex.getMethod(),
-                String.join(", ", ex.getSupportedMethods())
+                supportedMethods
         );
 
         ErrorDTO error = new ErrorDTO(

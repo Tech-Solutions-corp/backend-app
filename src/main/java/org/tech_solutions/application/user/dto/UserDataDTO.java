@@ -1,9 +1,10 @@
 package org.tech_solutions.application.user.dto;
 
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 public record UserDataDTO(
-        Long id,
+        BigInteger id,
         String name,
         String email,
         LocalDateTime created_at,

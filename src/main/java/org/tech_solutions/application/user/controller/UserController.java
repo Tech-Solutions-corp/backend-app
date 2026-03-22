@@ -15,7 +15,7 @@ import org.tech_solutions.application.user.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/users")
+@RequestMapping("api/v1/users")
 public class UserController {
     private final AuthService authService;
     private final UserService userService;

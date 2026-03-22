@@ -30,8 +30,8 @@ public class SecurityConfig {
         "/swagger-ui/**",
         "/swagger-ui.html",
         "/swagger-resources/**",
-        "/v*/usuarios/auth",
-        "/v*/usuarios/cadastro"
+        "/api/v1/users/auth",
+        "/api/v1/users/register"
     };
 
     public SecurityConfig(

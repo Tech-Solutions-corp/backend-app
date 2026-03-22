@@ -1,0 +1,85 @@
+package org.tech_solutions.application.importedtransactions.model;
+
+import jakarta.persistence.*;
+import org.tech_solutions.application.imports.model.ImportFile;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "imported_transactions")
+public class ImportedTransaction {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private BigInteger id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "import_id", nullable = false)
+    private ImportFile importFile;
+
+    @Column(name = "raw_description", length = 255)
+    private String rawDescription;
+
+    @Column(name = "raw_amount")
+    private BigDecimal rawAmount;
+
+    @Column(name = "raw_date")
+    private LocalDate rawDate;
+
+    @Column(nullable = false)
+    private Boolean processed;
+
+    public ImportedTransaction() {
+    }
+
+    public BigInteger getId() {
+        return id;
+    }
+
+    public void setId(BigInteger id) {
+        this.id = id;
+    }
+
+    public ImportFile getImportFile() {
+        return importFile;
+    }
+
+    public void setImportFile(ImportFile importFile) {
+        this.importFile = importFile;
+    }
+
+    public String getRawDescription() {
+        return rawDescription;
+    }
+
+    public void setRawDescription(String rawDescription) {
+        this.rawDescription = rawDescription;
+    }
+
+    public BigDecimal getRawAmount() {
+        return rawAmount;
+    }
+
+    public void setRawAmount(BigDecimal rawAmount) {
+        this.rawAmount = rawAmount;
+    }
+
+    public LocalDate getRawDate() {
+        return rawDate;
+    }
+
+    public void setRawDate(LocalDate rawDate) {
+        this.rawDate = rawDate;
+    }
+
+    public Boolean getProcessed() {
+        return processed;
+    }
+
+    public void setProcessed(Boolean processed) {
+        this.processed = processed;
+    }
+}
+

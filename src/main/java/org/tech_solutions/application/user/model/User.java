@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,7 +15,7 @@ public class User implements UserDetails {
 
     @Id
     @GeneratedValue( strategy = GenerationType.IDENTITY)
-    private Long id;
+    private BigInteger id;
     private String name;
     private String password;
     private String email;
@@ -30,7 +31,7 @@ public class User implements UserDetails {
         this.email = email;
     }
 
-    public User(Long id, String name, String password, String email, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public User(BigInteger id, String name, String password, String email, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.password = password;
@@ -44,11 +45,11 @@ public class User implements UserDetails {
         return new ArrayList<>();
     }
 
-    public Long getId() {
+    public BigInteger getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(BigInteger id) {
         this.id = id;
     }
 
