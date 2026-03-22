@@ -4,13 +4,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.tech_solutions.application.repository.UsuarioRepository;
+import org.tech_solutions.application.repository.UserRepository;
 
 @Service
 public class AuthManager implements UserDetailsService {
-    private final UsuarioRepository repository;
+    private final UserRepository repository;
 
-    public AuthManager(UsuarioRepository repository) {
+    public AuthManager(UserRepository repository) {
         this.repository = repository;
     }
 

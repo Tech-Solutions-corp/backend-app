@@ -1,6 +1,6 @@
 package org.tech_solutions.application.controller.dto;
 
-public record UsuarioLogadoDTO(
+public record UserLogedDTO(
         Long id,
         String token
 ) {

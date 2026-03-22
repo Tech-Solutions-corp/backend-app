@@ -6,6 +6,6 @@ public record LoginDTO(
         @NotBlank( message = "'email' nao pode ser vazio" )
         String email,
         @NotBlank( message = "'senha' nao pode ser vazio" )
-        String senha
+        String password
 ) {
 }

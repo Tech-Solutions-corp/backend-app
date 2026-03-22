@@ -9,14 +9,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.tech_solutions.application.controller.dto.ErrorDTO;
-import org.tech_solutions.application.exception.EntidadeExistenteException;
+import org.tech_solutions.application.exception.ExistingEntityException;
 
 @RestControllerAdvice
 public class HttpExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpExceptionHandler.class);
 
-    @ExceptionHandler(EntidadeExistenteException.class)
-    public ResponseEntity<ErrorDTO> entidadeExistenteHandler(EntidadeExistenteException ex) {
+    @ExceptionHandler(ExistingEntityException.class)
+    public ResponseEntity<ErrorDTO> entidadeExistenteHandler(ExistingEntityException ex) {
         var response = new ErrorDTO(
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage()

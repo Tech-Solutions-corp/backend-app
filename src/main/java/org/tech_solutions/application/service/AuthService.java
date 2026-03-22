@@ -5,8 +5,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.tech_solutions.application.controller.dto.LoginDTO;
-import org.tech_solutions.application.controller.dto.UsuarioLogadoDTO;
-import org.tech_solutions.application.model.Usuario;
+import org.tech_solutions.application.controller.dto.UserLogedDTO;
+import org.tech_solutions.application.model.User;
 import org.tech_solutions.application.security.TokenManager;
 
 @Service
@@ -19,17 +19,17 @@ public class AuthService {
         this.tokenManager = tokenManager;
     }
 
-    public UsuarioLogadoDTO autenticar(LoginDTO request) {
-        var usuarioAutenticar = new UsernamePasswordAuthenticationToken(
+    public UserLogedDTO autenticate(LoginDTO request) {
+        var userAuthenticate = new UsernamePasswordAuthenticationToken(
                 request.email(),
-                request.senha()
+                request.password()
         );
 
-        Authentication resultadoAutenticacao = authenticationManager.authenticate(usuarioAutenticar);
-        Usuario usuarioAutenticado = (Usuario) resultadoAutenticacao.getPrincipal();
+        Authentication authenticationResult = authenticationManager.authenticate(userAuthenticate);
+        User userAuthenticated = (User) authenticationResult.getPrincipal();
 
-        String token = tokenManager.gerarToken(usuarioAutenticado.getUsername());
+        String token = tokenManager.gerarToken(userAuthenticated.getUsername());
 
-        return new UsuarioLogadoDTO(usuarioAutenticado.getId(), token);
+        return new UserLogedDTO(userAuthenticated.getId(), token);
     }
 }
