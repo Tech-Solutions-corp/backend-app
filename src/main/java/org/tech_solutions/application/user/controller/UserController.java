@@ -6,10 +6,13 @@ import org.springframework.web.bind.annotation.*;
 import org.tech_solutions.application.user.dto.UserRegisterDTO;
 import org.tech_solutions.application.user.dto.UserDataDTO;
 import org.tech_solutions.application.auth.dto.LoginDTO;
+import org.tech_solutions.application.user.dto.ForgotPasswordRequestDTO;
+import org.tech_solutions.application.user.dto.ResetPasswordRequestDTO;
 import org.tech_solutions.application.user.dto.UserLogedDTO;
 import org.tech_solutions.application.user.mapper.UserMapper;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.auth.service.AuthService;
+import org.tech_solutions.application.user.service.PasswordRecoveryService;
 import org.tech_solutions.application.user.service.UserService;
 
 import java.util.List;
@@ -19,10 +22,16 @@ import java.util.List;
 public class UserController {
     private final AuthService authService;
     private final UserService userService;
+    private final PasswordRecoveryService passwordRecoveryService;
 
-    public UserController(AuthService authService, UserService userService) {
+    public UserController(
+            AuthService authService,
+            UserService userService,
+            PasswordRecoveryService passwordRecoveryService
+    ) {
         this.authService = authService;
         this.userService = userService;
+        this.passwordRecoveryService = passwordRecoveryService;
     }
 
     @PostMapping("/auth")
@@ -35,6 +44,18 @@ public class UserController {
     public ResponseEntity<UserDataDTO> register(@Valid @RequestBody UserRegisterDTO request) {
         User user = userService.registrate(UserMapper.toModel(request));
         return ResponseEntity.status(201).body(UserMapper.toDTO(user));
+    }
+
+    @PostMapping("/password/forgot")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        passwordRecoveryService.requestReset(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+        passwordRecoveryService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

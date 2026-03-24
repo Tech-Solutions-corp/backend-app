@@ -9,7 +9,6 @@ import org.tech_solutions.application.accounts.mapper.AccountMapper;
 import org.tech_solutions.application.accounts.model.Account;
 import org.tech_solutions.application.accounts.service.AccountService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -37,7 +36,7 @@ public class AccountController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<AccountDataDTO>> listByUser(@PathVariable BigInteger userId) {
+    public ResponseEntity<List<AccountDataDTO>> listByUser(@PathVariable Long userId) {
         List<Account> accounts = accountService.listByUser(userId);
         return accounts.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -45,13 +44,13 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<AccountDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(AccountMapper.toDTO(accountService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AccountDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody AccountRequestDTO request
     ) {
         Account updated = accountService.update(id, AccountMapper.toModel(request), request.userId());
@@ -59,9 +58,10 @@ public class AccountController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         accountService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

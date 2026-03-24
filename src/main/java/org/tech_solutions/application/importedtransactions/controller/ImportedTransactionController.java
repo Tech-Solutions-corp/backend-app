@@ -9,7 +9,6 @@ import org.tech_solutions.application.importedtransactions.mapper.ImportedTransa
 import org.tech_solutions.application.importedtransactions.model.ImportedTransaction;
 import org.tech_solutions.application.importedtransactions.service.ImportedTransactionService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -40,7 +39,7 @@ public class ImportedTransactionController {
     }
 
     @GetMapping("/import/{importId}")
-    public ResponseEntity<List<ImportedTransactionDataDTO>> listByImport(@PathVariable BigInteger importId) {
+    public ResponseEntity<List<ImportedTransactionDataDTO>> listByImport(@PathVariable Long importId) {
         List<ImportedTransaction> transactions = importedTransactionService.listByImport(importId);
         return transactions.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -48,13 +47,13 @@ public class ImportedTransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ImportedTransactionDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<ImportedTransactionDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(ImportedTransactionMapper.toDTO(importedTransactionService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ImportedTransactionDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody ImportedTransactionRequestDTO request
     ) {
         ImportedTransaction updated = importedTransactionService.update(
@@ -66,9 +65,10 @@ public class ImportedTransactionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         importedTransactionService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

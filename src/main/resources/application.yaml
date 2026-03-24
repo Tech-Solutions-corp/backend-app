@@ -1,6 +1,17 @@
 spring:
   application:
     name: application
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   mvc:
     throw-exception-if-no-handler-found: true
   web:
@@ -23,5 +34,12 @@ springdoc:
 application:
   var:
     token:
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:dev-local-jwt-secret-minimum-32-bytes-keep-safe-2026}
       expiration-time: ${JWT_EXPIRATION:7200000}
+      password-reset-expiration-time: ${JWT_PASSWORD_RESET_EXPIRATION:900000}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082,http://localhost:19006,http://127.0.0.1:19006}
+    frontend:
+      reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:http://localhost:8081/redefinir-senha}
+    mail:
+      from: ${MAIL_FROM:no-reply@financeiro-app.local}

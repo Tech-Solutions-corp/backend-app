@@ -7,7 +7,6 @@ import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class AiInsightService {
         this.userRepository = userRepository;
     }
 
-    public AiInsight create(AiInsight insight, BigInteger userId) {
+    public AiInsight create(AiInsight insight, Long userId) {
         insight.setUser(findUser(userId));
         insight.setGeneratedAt(LocalDateTime.now());
         return aiInsightRepository.save(insight);
@@ -32,17 +31,17 @@ public class AiInsightService {
         return aiInsightRepository.findAll();
     }
 
-    public List<AiInsight> listByUser(BigInteger userId) {
+    public List<AiInsight> listByUser(Long userId) {
         findUser(userId);
         return aiInsightRepository.findByUserId(userId);
     }
 
-    public AiInsight findById(BigInteger id) {
+    public AiInsight findById(Long id) {
         return aiInsightRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Insight nao encontrado"));
     }
 
-    public AiInsight update(BigInteger id, AiInsight updated, BigInteger userId) {
+    public AiInsight update(Long id, AiInsight updated, Long userId) {
         AiInsight current = findById(id);
         current.setUser(findUser(userId));
         current.setInsightType(updated.getInsightType());
@@ -50,13 +49,14 @@ public class AiInsightService {
         return aiInsightRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         aiInsightRepository.delete(findById(id));
     }
 
-    private User findUser(BigInteger userId) {
+    private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 }
+
 

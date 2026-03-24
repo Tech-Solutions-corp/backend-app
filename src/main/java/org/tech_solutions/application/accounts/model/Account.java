@@ -5,7 +5,6 @@ import org.tech_solutions.application.accounts.enums.Type;
 import org.tech_solutions.application.user.model.User;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,7 +13,7 @@ public class Account {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private BigInteger id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -39,7 +38,7 @@ public class Account {
     public Account() {
     }
 
-    public Account(BigInteger id, User user, String name, Type type, BigDecimal balance, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Account(Long id, User user, String name, Type type, BigDecimal balance, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.name = name;
@@ -49,11 +48,11 @@ public class Account {
         this.updatedAt = updatedAt;
     }
 
-    public BigInteger getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(BigInteger id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

@@ -9,7 +9,6 @@ import org.tech_solutions.application.imports.mapper.ImportMapper;
 import org.tech_solutions.application.imports.model.ImportFile;
 import org.tech_solutions.application.imports.service.ImportFileService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -37,7 +36,7 @@ public class ImportController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ImportDataDTO>> listByUser(@PathVariable BigInteger userId) {
+    public ResponseEntity<List<ImportDataDTO>> listByUser(@PathVariable Long userId) {
         List<ImportFile> imports = importFileService.listByUser(userId);
         return imports.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -45,13 +44,13 @@ public class ImportController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ImportDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<ImportDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(ImportMapper.toDTO(importFileService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ImportDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody ImportRequestDTO request
     ) {
         ImportFile updated = importFileService.update(id, ImportMapper.toModel(request), request.userId());
@@ -59,9 +58,10 @@ public class ImportController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         importFileService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

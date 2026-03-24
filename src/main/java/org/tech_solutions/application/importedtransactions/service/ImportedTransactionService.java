@@ -7,7 +7,6 @@ import org.tech_solutions.application.imports.model.ImportFile;
 import org.tech_solutions.application.imports.repository.ImportFileRepository;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @Service
@@ -24,7 +23,7 @@ public class ImportedTransactionService {
         this.importFileRepository = importFileRepository;
     }
 
-    public ImportedTransaction create(ImportedTransaction transaction, BigInteger importId) {
+    public ImportedTransaction create(ImportedTransaction transaction, Long importId) {
         transaction.setImportFile(findImport(importId));
         if (transaction.getProcessed() == null) {
             transaction.setProcessed(false);
@@ -36,17 +35,17 @@ public class ImportedTransactionService {
         return importedTransactionRepository.findAll();
     }
 
-    public List<ImportedTransaction> listByImport(BigInteger importId) {
+    public List<ImportedTransaction> listByImport(Long importId) {
         findImport(importId);
         return importedTransactionRepository.findByImportFileId(importId);
     }
 
-    public ImportedTransaction findById(BigInteger id) {
+    public ImportedTransaction findById(Long id) {
         return importedTransactionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Transacao importada nao encontrada"));
     }
 
-    public ImportedTransaction update(BigInteger id, ImportedTransaction updated, BigInteger importId) {
+    public ImportedTransaction update(Long id, ImportedTransaction updated, Long importId) {
         ImportedTransaction current = findById(id);
         current.setImportFile(findImport(importId));
         current.setRawDescription(updated.getRawDescription());
@@ -56,13 +55,14 @@ public class ImportedTransactionService {
         return importedTransactionRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         importedTransactionRepository.delete(findById(id));
     }
 
-    private ImportFile findImport(BigInteger importId) {
+    private ImportFile findImport(Long importId) {
         return importFileRepository.findById(importId)
                 .orElseThrow(() -> new EntityNotFoundException("Importacao nao encontrada"));
     }
 }
+
 

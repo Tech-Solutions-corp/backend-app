@@ -9,7 +9,6 @@ import org.tech_solutions.application.categories.mapper.CategoryMapper;
 import org.tech_solutions.application.categories.model.Category;
 import org.tech_solutions.application.categories.service.CategoryService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -37,7 +36,7 @@ public class CategoryController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<CategoryDataDTO>> listByUser(@PathVariable BigInteger userId) {
+    public ResponseEntity<List<CategoryDataDTO>> listByUser(@PathVariable Long userId) {
         List<Category> categories = categoryService.listByUser(userId);
         return categories.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -45,13 +44,13 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<CategoryDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(CategoryMapper.toDTO(categoryService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<CategoryDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody CategoryRequestDTO request
     ) {
         Category updated = categoryService.update(id, CategoryMapper.toModel(request), request.userId());
@@ -59,9 +58,10 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         categoryService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

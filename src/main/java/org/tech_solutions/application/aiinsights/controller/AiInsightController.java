@@ -9,7 +9,6 @@ import org.tech_solutions.application.aiinsights.mapper.AiInsightMapper;
 import org.tech_solutions.application.aiinsights.model.AiInsight;
 import org.tech_solutions.application.aiinsights.service.AiInsightService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -37,7 +36,7 @@ public class AiInsightController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<AiInsightDataDTO>> listByUser(@PathVariable BigInteger userId) {
+    public ResponseEntity<List<AiInsightDataDTO>> listByUser(@PathVariable Long userId) {
         List<AiInsight> insights = aiInsightService.listByUser(userId);
         return insights.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -45,13 +44,13 @@ public class AiInsightController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AiInsightDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<AiInsightDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(AiInsightMapper.toDTO(aiInsightService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AiInsightDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody AiInsightRequestDTO request
     ) {
         AiInsight updated = aiInsightService.update(id, AiInsightMapper.toModel(request), request.userId());
@@ -59,9 +58,10 @@ public class AiInsightController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         aiInsightService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

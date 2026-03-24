@@ -8,7 +8,6 @@ import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,7 +22,7 @@ public class ImportFileService {
         this.userRepository = userRepository;
     }
 
-    public ImportFile create(ImportFile importFile, BigInteger userId) {
+    public ImportFile create(ImportFile importFile, Long userId) {
         importFile.setUser(findUser(userId));
         importFile.setImportedAt(LocalDateTime.now());
         if (importFile.getStatus() == null) {
@@ -36,17 +35,17 @@ public class ImportFileService {
         return importFileRepository.findAll();
     }
 
-    public List<ImportFile> listByUser(BigInteger userId) {
+    public List<ImportFile> listByUser(Long userId) {
         findUser(userId);
         return importFileRepository.findByUserId(userId);
     }
 
-    public ImportFile findById(BigInteger id) {
+    public ImportFile findById(Long id) {
         return importFileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Importacao nao encontrada"));
     }
 
-    public ImportFile update(BigInteger id, ImportFile updated, BigInteger userId) {
+    public ImportFile update(Long id, ImportFile updated, Long userId) {
         ImportFile current = findById(id);
         current.setUser(findUser(userId));
         current.setFileName(updated.getFileName());
@@ -54,13 +53,14 @@ public class ImportFileService {
         return importFileRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         importFileRepository.delete(findById(id));
     }
 
-    private User findUser(BigInteger userId) {
+    private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 }
+
 

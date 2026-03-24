@@ -7,7 +7,6 @@ import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class CategoryService {
         this.userRepository = userRepository;
     }
 
-    public Category create(Category category, BigInteger userId) {
+    public Category create(Category category, Long userId) {
         category.setUser(findUser(userId));
         category.setCreatedAt(LocalDateTime.now());
         return categoryRepository.save(category);
@@ -32,17 +31,17 @@ public class CategoryService {
         return categoryRepository.findAll();
     }
 
-    public List<Category> listByUser(BigInteger userId) {
+    public List<Category> listByUser(Long userId) {
         findUser(userId);
         return categoryRepository.findByUserId(userId);
     }
 
-    public Category findById(BigInteger id) {
+    public Category findById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Categoria nao encontrada"));
     }
 
-    public Category update(BigInteger id, Category updated, BigInteger userId) {
+    public Category update(Long id, Category updated, Long userId) {
         Category current = findById(id);
         current.setUser(findUser(userId));
         current.setName(updated.getName());
@@ -50,13 +49,14 @@ public class CategoryService {
         return categoryRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         categoryRepository.delete(findById(id));
     }
 
-    private User findUser(BigInteger userId) {
+    private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 }
+
 

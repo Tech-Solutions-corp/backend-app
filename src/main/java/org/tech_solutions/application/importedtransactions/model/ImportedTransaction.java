@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import org.tech_solutions.application.imports.model.ImportFile;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDate;
 
 @Entity
@@ -13,7 +12,7 @@ public class ImportedTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private BigInteger id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "import_id", nullable = false)
@@ -34,11 +33,11 @@ public class ImportedTransaction {
     public ImportedTransaction() {
     }
 
-    public BigInteger getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(BigInteger id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -82,4 +81,5 @@ public class ImportedTransaction {
         this.processed = processed;
     }
 }
+
 

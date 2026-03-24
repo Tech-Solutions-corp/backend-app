@@ -7,7 +7,6 @@ import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class AccountService {
         this.userRepository = userRepository;
     }
 
-    public Account create(Account account, BigInteger userId) {
+    public Account create(Account account, Long userId) {
         User user = findUser(userId);
         account.setUser(user);
         account.setCreatedAt(LocalDateTime.now());
@@ -34,17 +33,17 @@ public class AccountService {
         return accountRepository.findAll();
     }
 
-    public List<Account> listByUser(BigInteger userId) {
+    public List<Account> listByUser(Long userId) {
         findUser(userId);
         return accountRepository.findByUserId(userId);
     }
 
-    public Account findById(BigInteger id) {
+    public Account findById(Long id) {
         return accountRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Conta nao encontrada"));
     }
 
-    public Account update(BigInteger id, Account updated, BigInteger userId) {
+    public Account update(Long id, Account updated, Long userId) {
         Account current = findById(id);
         User user = findUser(userId);
 
@@ -57,13 +56,14 @@ public class AccountService {
         return accountRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         Account current = findById(id);
         accountRepository.delete(current);
     }
 
-    private User findUser(BigInteger userId) {
+    private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 }
+

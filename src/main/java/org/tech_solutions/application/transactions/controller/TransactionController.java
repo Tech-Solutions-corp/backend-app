@@ -9,7 +9,6 @@ import org.tech_solutions.application.transactions.mapper.TransactionMapper;
 import org.tech_solutions.application.transactions.model.Transaction;
 import org.tech_solutions.application.transactions.service.TransactionService;
 
-import java.math.BigInteger;
 import java.util.List;
 
 @RestController
@@ -42,7 +41,7 @@ public class TransactionController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionDataDTO>> listByUser(@PathVariable BigInteger userId) {
+    public ResponseEntity<List<TransactionDataDTO>> listByUser(@PathVariable Long userId) {
         List<Transaction> transactions = transactionService.listByUser(userId);
         return transactions.isEmpty()
                 ? ResponseEntity.noContent().build()
@@ -50,13 +49,13 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionDataDTO> findById(@PathVariable BigInteger id) {
+    public ResponseEntity<TransactionDataDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(TransactionMapper.toDTO(transactionService.findById(id)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<TransactionDataDTO> update(
-            @PathVariable BigInteger id,
+            @PathVariable Long id,
             @Valid @RequestBody TransactionRequestDTO request
     ) {
         Transaction updated = transactionService.update(
@@ -70,9 +69,10 @@ public class TransactionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable BigInteger id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         transactionService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+
 

@@ -5,15 +5,14 @@ import jakarta.validation.constraints.NotNull;
 import org.tech_solutions.application.transactions.enums.TransactionType;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDate;
 
 public record TransactionRequestDTO(
         @NotNull(message = "'userId' nao pode ser nulo")
-        BigInteger userId,
+        Long userId,
         @NotNull(message = "'accountId' nao pode ser nulo")
-        BigInteger accountId,
-        BigInteger categoryId,
+        Long accountId,
+        Long categoryId,
         String transactionDescription,
         @NotNull(message = "'amount' nao pode ser nulo")
         @DecimalMin(value = "0.01", message = "'amount' deve ser maior que zero")
@@ -24,4 +23,5 @@ public record TransactionRequestDTO(
         TransactionType transactionType
 ) {
 }
+
 

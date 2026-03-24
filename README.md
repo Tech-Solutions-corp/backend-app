@@ -125,6 +125,24 @@ spring:
 ### 3️⃣ Execute a aplicação
 ` mvn spring-boot:run `
 
+### 4️⃣ Variáveis para recuperação de senha por email
+Configure no ambiente (ex.: `.env`) para habilitar o fluxo:
+
+- `JWT_SECRET`
+- `JWT_EXPIRATION`
+- `JWT_PASSWORD_RESET_EXPIRATION` (opcional, default 900000 ms)
+- `MAIL_HOST`
+- `MAIL_PORT`
+- `MAIL_USERNAME`
+- `MAIL_PASSWORD`
+- `MAIL_FROM`
+- `FRONTEND_RESET_PASSWORD_URL`
+
+Endpoints públicos adicionados:
+
+- `POST /api/v1/users/password/forgot`
+- `POST /api/v1/users/password/reset`
+
 ## 🧠 Conceitos Importantes Aplicados
 ### 🔹 JWT
 

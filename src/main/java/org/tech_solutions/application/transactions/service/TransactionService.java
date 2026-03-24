@@ -11,7 +11,6 @@ import org.tech_solutions.application.transactions.repository.TransactionReposit
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,7 +34,7 @@ public class TransactionService {
         this.categoryRepository = categoryRepository;
     }
 
-    public Transaction create(Transaction transaction, BigInteger userId, BigInteger accountId, BigInteger categoryId) {
+    public Transaction create(Transaction transaction, Long userId, Long accountId, Long categoryId) {
         transaction.setUser(findUser(userId));
         transaction.setAccount(findAccount(accountId));
         transaction.setCategory(findCategory(categoryId));
@@ -47,22 +46,22 @@ public class TransactionService {
         return transactionRepository.findAll();
     }
 
-    public List<Transaction> listByUser(BigInteger userId) {
+    public List<Transaction> listByUser(Long userId) {
         findUser(userId);
         return transactionRepository.findByUserId(userId);
     }
 
-    public Transaction findById(BigInteger id) {
+    public Transaction findById(Long id) {
         return transactionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Transacao nao encontrada"));
     }
 
     public Transaction update(
-            BigInteger id,
+            Long id,
             Transaction updated,
-            BigInteger userId,
-            BigInteger accountId,
-            BigInteger categoryId
+            Long userId,
+            Long accountId,
+            Long categoryId
     ) {
         Transaction current = findById(id);
         current.setUser(findUser(userId));
@@ -75,21 +74,21 @@ public class TransactionService {
         return transactionRepository.save(current);
     }
 
-    public void delete(BigInteger id) {
+    public void delete(Long id) {
         transactionRepository.delete(findById(id));
     }
 
-    private User findUser(BigInteger userId) {
+    private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 
-    private Account findAccount(BigInteger accountId) {
+    private Account findAccount(Long accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Conta nao encontrada"));
     }
 
-    private Category findCategory(BigInteger categoryId) {
+    private Category findCategory(Long categoryId) {
         if (categoryId == null) {
             return null;
         }
@@ -97,4 +96,5 @@ public class TransactionService {
                 .orElseThrow(() -> new EntityNotFoundException("Categoria nao encontrada"));
     }
 }
+
 

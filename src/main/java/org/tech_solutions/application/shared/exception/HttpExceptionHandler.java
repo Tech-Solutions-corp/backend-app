@@ -44,6 +44,12 @@ public class HttpExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<ErrorDTO> handleBadRequest(IllegalArgumentException ex) {
+                ErrorDTO error = new ErrorDTO(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorDTO> handleNotFound(NoHandlerFoundException ex) {
         ErrorDTO error = new ErrorDTO(
