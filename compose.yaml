@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: techsolution_app_db
+      MYSQL_USER: financial_db_user
+      MYSQL_PASSWORD: financial_db_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: financial-minio-user
+      MINIO_ROOT_PASSWORD: financial-minio-password
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  mysql-data:
+  minio-data:

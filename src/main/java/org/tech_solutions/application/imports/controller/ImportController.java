@@ -3,13 +3,16 @@ package org.tech_solutions.application.imports.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.tech_solutions.application.imports.dto.ImportDataDTO;
 import org.tech_solutions.application.imports.dto.ImportRequestDTO;
 import org.tech_solutions.application.imports.mapper.ImportMapper;
 import org.tech_solutions.application.imports.model.ImportFile;
 import org.tech_solutions.application.imports.service.ImportFileService;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/v1/imports")
@@ -25,6 +28,15 @@ public class ImportController {
     public ResponseEntity<ImportDataDTO> create(@Valid @RequestBody ImportRequestDTO request) {
         ImportFile created = importFileService.create(ImportMapper.toModel(request), request.userId());
         return ResponseEntity.status(201).body(ImportMapper.toDTO(created));
+    }
+
+    @PostMapping("/{userId}/upload")
+    public ResponseEntity<Map<String, String>> upload(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        importFileService.upload(file, userId);
+        return ResponseEntity.status(200).body(Map.of("message", "Extrato carregado com sucesso"));
     }
 
     @GetMapping

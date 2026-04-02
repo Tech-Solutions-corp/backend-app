@@ -31,6 +31,12 @@ public class ImportFile {
     public ImportFile() {
     }
 
+    public ImportFile(String fileName) {
+        this.fileName = fileName;
+        this.importedAt = LocalDateTime.now();
+        this.status = ImportStatus.PROCESSING;
+    }
+
     public Long getId() {
         return id;
     }

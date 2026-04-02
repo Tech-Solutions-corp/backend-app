@@ -8,7 +8,10 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.tech_solutions.application.imports.ImportValidationException;
+import org.tech_solutions.application.imports.UploadOperationException;
 import org.tech_solutions.application.shared.dto.ErrorDTO;
 
 @RestControllerAdvice
@@ -79,6 +82,45 @@ public class HttpExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
     }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorDTO> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        ErrorDTO error = new ErrorDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Arquivo excede o tamanho máximo permitido"
+        );
+
+        LOGGER.error("Arquivo excede o tamanho máximo permitido, tamanho máximo permitido: {}", ex.getMaxUploadSize(), ex);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(error);
+    }
+
+    @ExceptionHandler(ImportValidationException.class)
+    public ResponseEntity<ErrorDTO> handleimportValidationException(ImportValidationException ex) {
+        ErrorDTO error = new ErrorDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(error);
+    }
+
+    @ExceptionHandler(UploadOperationException.class)
+    public ResponseEntity<ErrorDTO> handleUploadOperationException(UploadOperationException ex) {
+        ErrorDTO error = new ErrorDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(error);
+    }
+
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDTO> handleGenericException(Exception ex) {
