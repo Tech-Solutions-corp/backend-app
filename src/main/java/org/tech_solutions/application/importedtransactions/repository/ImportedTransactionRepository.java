@@ -15,7 +15,6 @@ public interface ImportedTransactionRepository extends JpaRepository<ImportedTra
 
 
 
-    // Troca o retorno de Object[] para List<Object[]>
     @Query("""
     SELECT SUM(it.rawAmount), COUNT(it)
     FROM ImportedTransaction it

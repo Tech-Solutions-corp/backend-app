@@ -7,6 +7,7 @@ import org.tech_solutions.application.aiinsights.enums.InsightType;
 import org.tech_solutions.application.aiinsights.model.AiInsight;
 import org.tech_solutions.application.aiinsights.service.AiInsightService;
 import org.tech_solutions.application.importedtransactions.repository.ImportedTransactionRepository;
+import org.tech_solutions.application.imports.service.ImportFileService;
 import org.tech_solutions.application.transactions.enums.TransactionType;
 import org.tech_solutions.application.transactions.model.Transaction;
 import org.tech_solutions.application.transactions.repository.TransactionRepository;
@@ -22,12 +23,14 @@ public class AiInsightGenerator {
     private final ImportedTransactionRepository importedTransactionRepository;
     private final AiInsightService aiInsightService;
     private final ChatClient chatClient;
+    private final ImportFileService fileService;
 
-    public AiInsightGenerator(TransactionRepository transactionRepository, ImportedTransactionRepository importedTransactionRepository, AiInsightService aiInsightService, ChatClient chatClient) {
+    public AiInsightGenerator(TransactionRepository transactionRepository, ImportedTransactionRepository importedTransactionRepository, AiInsightService aiInsightService, ChatClient chatClient, ImportFileService fileService) {
         this.transactionRepository = transactionRepository;
         this.importedTransactionRepository = importedTransactionRepository;
         this.aiInsightService = aiInsightService;
         this.chatClient = chatClient;
+        this.fileService = fileService;
     }
 
     public AiInsight generateAndSave(Long userId) {
@@ -48,10 +51,12 @@ public class AiInsightGenerator {
         );
         List<Object[]> importedSummary = importedTransactionRepository
                 .findRawSummaryByUser(userId, startDate, endDate);
+        List<String> fileDetails = fileService
+                .fetchCsvDescriptions(userId, startDate, endDate);
 
         // 2. Monta o prompt com os dados
         String prompt = buildPrompt(expensesByCategory, incomeVsExpense,
-                topExpenses, importedSummary, startDate, endDate);
+                topExpenses, importedSummary, fileDetails, startDate, endDate);
 
         // 3. Chama o LLM
         String insightContent = chatClient.prompt()
@@ -71,6 +76,7 @@ public class AiInsightGenerator {
             List<Object[]> incomeVsExpense,
             List<Transaction> topExpenses,
             List<Object[]> importedSummary,
+            List<String> fileDetails,
             LocalDate startDate,
             LocalDate endDate
     ) {
@@ -110,6 +116,12 @@ public class AiInsightGenerator {
             }
         }
 
+        String fileDetailsFormatted = fileDetails.isEmpty()
+                ? "Nenhum extrato importado disponível"
+                : fileDetails.stream()
+                .limit(20)
+                .collect(Collectors.joining("\n"));
+
         return """
         Você é um assistente financeiro pessoal integrado a um aplicativo de gestão financeira.
         Seu objetivo é ajudar o usuário a entender melhor seus hábitos financeiros de forma
@@ -121,12 +133,15 @@ public class AiInsightGenerator {
         Gastos por categoria: %s
         Receita total vs Despesa total: %s
         Maiores gastos individuais: %s
-        Transações importadas (dados brutos pendentes): %s
-
+        Transações importadas - resumo: %s
+        Transações importadas - detalhes do extrato:
+        %s
+        
         Estruture sua resposta exatamente assim:
 
         1. **Resumo do seu período**
-        Apresente um panorama geral de como foi a saúde financeira do usuário no período.
+        Apresente um panorama geral de como foi a saúde financeira do usuário no período, sempre informando e
+        destacando seu saldo final segundo os dados apresentados.
 
         2. **Principal padrão identificado nos seus gastos**
         Aponte o comportamento financeiro mais relevante identificado nos dados,
@@ -141,7 +156,8 @@ public class AiInsightGenerator {
                 categoriesFormatted.isEmpty()  ? "Nenhum gasto categorizado no período" : categoriesFormatted,
                 incomeVsExpenseFormatted,
                 topExpensesFormatted.isEmpty() ? "Nenhum gasto encontrado no período"   : topExpensesFormatted,
-                importedFormatted
+                importedFormatted,
+                fileDetailsFormatted
         );
     }
 }
