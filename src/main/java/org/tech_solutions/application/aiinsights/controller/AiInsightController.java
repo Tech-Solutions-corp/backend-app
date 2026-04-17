@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.tech_solutions.application.aiinsights.dto.AiInsightDataDTO;
 import org.tech_solutions.application.aiinsights.dto.AiInsightRequestDTO;
+import org.tech_solutions.application.aiinsights.generator.AiInsightGenerator;
 import org.tech_solutions.application.aiinsights.mapper.AiInsightMapper;
 import org.tech_solutions.application.aiinsights.model.AiInsight;
 import org.tech_solutions.application.aiinsights.service.AiInsightService;
@@ -16,9 +17,14 @@ import java.util.List;
 public class AiInsightController {
 
     private final AiInsightService aiInsightService;
+    private final AiInsightGenerator aiInsightGenerator;
 
-    public AiInsightController(AiInsightService aiInsightService) {
+    public AiInsightController(
+            AiInsightService aiInsightService,
+            AiInsightGenerator aiInsightGenerator
+    ) {
         this.aiInsightService = aiInsightService;
+        this.aiInsightGenerator = aiInsightGenerator;
     }
 
     @PostMapping
@@ -62,6 +68,10 @@ public class AiInsightController {
         aiInsightService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/generate/{userId}")
+    public ResponseEntity<AiInsightDataDTO> generate(@PathVariable Long userId) {
+        AiInsight generated = aiInsightGenerator.generateAndSave(userId);
+        return ResponseEntity.status(201).body(AiInsightMapper.toDTO(generated));
+    }
 }
-
-

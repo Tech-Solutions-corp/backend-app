@@ -28,6 +28,13 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.5
 springdoc:
   api-docs:
     enabled: true

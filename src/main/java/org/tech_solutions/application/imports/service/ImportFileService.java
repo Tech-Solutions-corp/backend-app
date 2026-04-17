@@ -130,6 +130,7 @@ public class ImportFileService {
 
             LOGGER.info("Salvando informações sobre o upload do arquivo na base relacional...");
             ImportFile fileInfos = new ImportFile(originalFilename);
+            fileInfos.setStatus(ImportStatus.COMPLETED);
             this.create(fileInfos, userId);
             LOGGER.info("Informações sobre upload de arquivo persistidas");
         } catch (InsufficientDataException | IOException e) {
