@@ -1,2 +1,2 @@
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS password_reset_version INT NOT NULL DEFAULT 0;
+    ADD COLUMN password_reset_version INT NOT NULL DEFAULT 0;
