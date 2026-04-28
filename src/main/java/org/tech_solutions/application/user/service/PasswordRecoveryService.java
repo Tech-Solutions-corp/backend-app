@@ -6,6 +6,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.tech_solutions.application.security.TokenManager;
+import org.tech_solutions.application.security.PasswordResetTokenData;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
@@ -43,19 +44,26 @@ public class PasswordRecoveryService {
     }
 
     public void resetPassword(String token, String newPassword) {
-        String email = tokenManager.obterEmailDeTokenRecuperacao(token)
+        PasswordResetTokenData tokenData = tokenManager.obterDadosTokenRecuperacao(token)
+            .orElseThrow(() -> new IllegalArgumentException("Token de recuperacao invalido ou expirado"));
+
+        User user = userRepository.findByEmail(tokenData.email())
                 .orElseThrow(() -> new IllegalArgumentException("Token de recuperacao invalido ou expirado"));
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Token de recuperacao invalido ou expirado"));
+        int currentVersion = user.getPasswordResetVersion() == null ? 0 : user.getPasswordResetVersion();
+        if (currentVersion != tokenData.version()) {
+            throw new IllegalArgumentException("Token de recuperacao invalido ou expirado");
+        }
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordResetVersion(currentVersion + 1);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
     }
 
     private void sendRecoveryEmail(User user) {
-        String token = tokenManager.gerarTokenRecuperacaoSenha(user.getEmail());
+        int version = user.getPasswordResetVersion() == null ? 0 : user.getPasswordResetVersion();
+        String token = tokenManager.gerarTokenRecuperacaoSenha(user.getEmail(), version);
         String resetLink = String.format("%s?token=%s", resetPasswordUrl, token);
 
         SimpleMailMessage message = new SimpleMailMessage();

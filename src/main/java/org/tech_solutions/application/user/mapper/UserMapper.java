@@ -2,6 +2,7 @@ package org.tech_solutions.application.user.mapper;
 
 import org.tech_solutions.application.user.dto.UserRegisterDTO;
 import org.tech_solutions.application.user.dto.UserDataDTO;
+import org.tech_solutions.application.user.dto.UserUpdateDTO;
 import org.tech_solutions.application.user.model.User;
 
 import java.util.List;
@@ -23,6 +24,14 @@ public class UserMapper {
                 user.getCreatedAt(),
                 user.getUpdatedAt()
                 );
+    }
+
+    public static User toModel(UserUpdateDTO dto) {
+        return new User(
+                dto.name(),
+                dto.password(),
+                dto.email()
+        );
     }
 
     public static List<UserDataDTO> toDTO(List<User> user) {

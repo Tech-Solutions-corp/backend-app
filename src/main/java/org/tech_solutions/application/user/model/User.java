@@ -20,6 +20,8 @@ public class User implements UserDetails {
     private String email;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Column(name = "password_reset_version", nullable = false)
+    private Integer passwordResetVersion = 0;
 
     public User() {
     }
@@ -96,5 +98,33 @@ public class User implements UserDetails {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getPasswordResetVersion() {
+        return passwordResetVersion;
+    }
+
+    public void setPasswordResetVersion(Integer passwordResetVersion) {
+        this.passwordResetVersion = passwordResetVersion;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 }

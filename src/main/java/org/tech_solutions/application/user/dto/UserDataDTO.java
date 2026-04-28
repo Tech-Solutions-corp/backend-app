@@ -6,8 +6,8 @@ public record UserDataDTO(
         Long id,
         String name,
         String email,
-        LocalDateTime created_at,
-        LocalDateTime updated_at
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }
 

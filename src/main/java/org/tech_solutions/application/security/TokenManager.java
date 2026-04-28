@@ -67,17 +67,18 @@ public class TokenManager {
         return Optional.empty();
     }
 
-    public String gerarTokenRecuperacaoSenha(String email) {
+    public String gerarTokenRecuperacaoSenha(String email, int version) {
         return Jwts.builder()
                 .subject(email)
                 .claim("purpose", PASSWORD_RESET_PURPOSE)
+                .claim("version", version)
                 .issuedAt(new Date())
                 .expiration(this.gerarTempoExpiracao(tempoExpiracaoTokenRecuperacao))
                 .signWith(this.obterSecretKey(), Jwts.SIG.HS256)
                 .compact();
     }
 
-    public Optional<String> obterEmailDeTokenRecuperacao(String token) {
+    public Optional<PasswordResetTokenData> obterDadosTokenRecuperacao(String token) {
         try {
             var claims = Jwts.parser()
                     .verifyWith(this.obterSecretKey())
@@ -90,7 +91,12 @@ public class TokenManager {
                 return Optional.empty();
             }
 
-            return Optional.ofNullable(claims.getSubject());
+            Integer version = claims.get("version", Integer.class);
+            if (version == null) {
+                return Optional.empty();
+            }
+
+            return Optional.of(new PasswordResetTokenData(claims.getSubject(), version));
         } catch (ExpiredJwtException e) {
             LOGGER.debug("Token de recuperacao expirado");
         } catch (MalformedJwtException e) {

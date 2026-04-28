@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.tech_solutions.application.user.dto.UserRegisterDTO;
 import org.tech_solutions.application.user.dto.UserDataDTO;
+import org.tech_solutions.application.user.dto.UserUpdateDTO;
 import org.tech_solutions.application.auth.dto.LoginDTO;
 import org.tech_solutions.application.user.dto.ForgotPasswordRequestDTO;
 import org.tech_solutions.application.user.dto.ResetPasswordRequestDTO;
@@ -65,5 +66,26 @@ public class UserController {
         return foundUsers.isEmpty() ?
                 ResponseEntity.status(204).build()
              :  ResponseEntity.status(200).body(UserMapper.toDTO(foundUsers));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDataDTO> findById(@PathVariable Long id) {
+        User found = userService.findById(id);
+        return ResponseEntity.ok(UserMapper.toDTO(found));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDataDTO> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateDTO request
+    ) {
+        User updated = userService.update(id, UserMapper.toModel(request));
+        return ResponseEntity.ok(UserMapper.toDTO(updated));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

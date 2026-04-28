@@ -1,25 +1,35 @@
 package org.tech_solutions.application.imports.service;
 
-import io.minio.*;
-import io.minio.errors.*;
+import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.errors.ErrorResponseException;
+import io.minio.errors.InsufficientDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+import org.tech_solutions.application.importedtransactions.model.ImportedTransaction;
+import org.tech_solutions.application.importedtransactions.repository.ImportedTransactionRepository;
 import org.tech_solutions.application.imports.ImportValidationException;
 import org.tech_solutions.application.imports.UploadOperationException;
 import org.tech_solutions.application.imports.enums.ImportStatus;
 import org.tech_solutions.application.imports.model.ImportFile;
 import org.tech_solutions.application.imports.repository.ImportFileRepository;
+import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
-import org.tech_solutions.application.user.model.User;
-import org.tech_solutions.application.user.repository.UserRepository;
 
+import java.io.ByteArrayInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.time.LocalDate;
@@ -37,12 +47,19 @@ public class ImportFileService {
 
     private final MinioClient minioClient;
     private final ImportFileRepository importFileRepository;
-    private final UserRepository userRepository;
+    private final ImportedTransactionRepository importedTransactionRepository;
+    private final CurrentUserService currentUserService;
 
-    public ImportFileService(MinioClient minioClient, ImportFileRepository importFileRepository, UserRepository userRepository) {
+    public ImportFileService(
+            MinioClient minioClient,
+            ImportFileRepository importFileRepository,
+            ImportedTransactionRepository importedTransactionRepository,
+            CurrentUserService currentUserService
+    ) {
         this.minioClient = minioClient;
         this.importFileRepository = importFileRepository;
-        this.userRepository = userRepository;
+        this.importedTransactionRepository = importedTransactionRepository;
+        this.currentUserService = currentUserService;
     }
 
     public void inicializarBucket() {
@@ -70,7 +87,7 @@ public class ImportFileService {
     }
 
     public ImportFile create(ImportFile importFile, Long userId) {
-        importFile.setUser(findUser(userId));
+        importFile.setUser(currentUserService.requireCurrentUser());
         importFile.setImportedAt(LocalDateTime.now());
         if (importFile.getStatus() == null) {
             importFile.setStatus(ImportStatus.PROCESSING);
@@ -79,34 +96,29 @@ public class ImportFileService {
     }
 
     public List<ImportFile> listAll() {
-        return importFileRepository.findAll();
+        return importFileRepository.findByUserId(currentUserService.requireCurrentUserId());
     }
 
     public List<ImportFile> listByUser(Long userId) {
-        findUser(userId);
-        return importFileRepository.findByUserId(userId);
+        return importFileRepository.findByUserId(currentUserService.requireCurrentUserId());
     }
 
     public ImportFile findById(Long id) {
-        return importFileRepository.findById(id)
+        ImportFile importFile = importFileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Importacao nao encontrada"));
+        assertOwnedByCurrentUser(importFile);
+        return importFile;
     }
 
     public ImportFile update(Long id, ImportFile updated, Long userId) {
         ImportFile current = findById(id);
-        current.setUser(findUser(userId));
+        current.setUser(currentUserService.requireCurrentUser());
         current.setFileName(updated.getFileName());
-        current.setStatus(updated.getStatus() == null ? current.getStatus() : updated.getStatus());
         return importFileRepository.save(current);
     }
 
     public void delete(Long id) {
         importFileRepository.delete(findById(id));
-    }
-
-    private User findUser(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 
     public void upload(MultipartFile file, Long userId) {
@@ -117,6 +129,13 @@ public class ImportFileService {
 
         String originalFilename = file.getOriginalFilename();
         String filename = this.generateNewFilename(originalFilename);
+        byte[] fileBytes;
+
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new UploadOperationException("Nao foi possivel ler o arquivo enviado");
+        }
 
         ImportFile fileInfos = new ImportFile(filename);
 
@@ -126,7 +145,7 @@ public class ImportFileService {
                     PutObjectArgs.builder()
                             .bucket(bucket)
                             .object(filename)
-                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .stream(new ByteArrayInputStream(fileBytes), fileBytes.length, -1)
                             .contentType(file.getContentType())
                             .build()
             );
@@ -135,8 +154,10 @@ public class ImportFileService {
             LOGGER.info("Arquivo carregado no bucket {}", bucket);
 
             LOGGER.info("Salvando informações sobre o upload do arquivo na base relacional...");
-            fileInfos.setStatus(ImportStatus.COMPLETED);
-            this.create(fileInfos, userId);
+            ImportFile savedImport = this.create(fileInfos, userId);
+            persistImportedTransactions(savedImport, fileBytes);
+            savedImport.setStatus(ImportStatus.COMPLETED);
+            importFileRepository.save(savedImport);
 
             LOGGER.info("Informações sobre upload de arquivo persistidas");
         } catch (Exception e) {
@@ -150,7 +171,8 @@ public class ImportFileService {
                                              LocalDate startDate,
                                              LocalDate endDate) {
         List<ImportFile> files = importFileRepository.findCompletedByUserAndPeriod(
-                userId,
+            currentUserService.requireCurrentUserId(),
+            ImportStatus.COMPLETED,
                 startDate.atStartOfDay(),
                 endDate.atTime(23, 59, 59)
         );
@@ -173,9 +195,7 @@ public class ImportFileService {
 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    String[] columns = line.split(",");
-                    // Adapta os índices conforme a estrutura real do seu CSV
-                    // Assumindo: data, descrição, valor
+                    String[] columns = parseCsvLine(line);
                     if (columns.length >= 3) {
                         String desc = "%s | %s | R$%s".formatted(
                                 columns[0].trim(),  // data
@@ -192,6 +212,97 @@ public class ImportFileService {
         }
 
         return descriptions;
+    }
+
+    private void persistImportedTransactions(ImportFile importFile, byte[] fileBytes) {
+        List<ImportedTransaction> importedTransactions = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new ByteArrayInputStream(fileBytes), StandardCharsets.UTF_8)
+        )) {
+            String header = reader.readLine();
+            if (header == null) {
+                return;
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = parseCsvLine(line);
+                if (columns.length < 3) {
+                    continue;
+                }
+
+                LocalDate rawDate = parseDate(columns[0]);
+                BigDecimal rawAmount = parseAmount(columns[2]);
+                if (rawDate == null || rawAmount == null) {
+                    continue;
+                }
+
+                ImportedTransaction importedTransaction = new ImportedTransaction();
+                importedTransaction.setImportFile(importFile);
+                importedTransaction.setRawDescription(columns[1].trim());
+                importedTransaction.setRawAmount(rawAmount);
+                importedTransaction.setRawDate(rawDate);
+                importedTransaction.setProcessed(false);
+                importedTransactions.add(importedTransaction);
+            }
+        } catch (IOException e) {
+            throw new UploadOperationException("Nao foi possivel processar o CSV importado");
+        }
+
+        if (!importedTransactions.isEmpty()) {
+            importedTransactionRepository.saveAll(importedTransactions);
+        }
+    }
+
+    private String[] parseCsvLine(String line) {
+        List<String> columns = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean insideQuotes = false;
+
+        for (int index = 0; index < line.length(); index++) {
+            char character = line.charAt(index);
+            if (character == '"') {
+                if (insideQuotes && index + 1 < line.length() && line.charAt(index + 1) == '"') {
+                    current.append('"');
+                    index++;
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+                continue;
+            }
+
+            if (character == ',' && !insideQuotes) {
+                columns.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+
+            current.append(character);
+        }
+
+        columns.add(current.toString());
+        return columns.toArray(String[]::new);
+    }
+
+    private LocalDate parseDate(String value) {
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private BigDecimal parseAmount(String value) {
+        try {
+            String normalized = value.trim()
+                    .replace("R$", "")
+                    .replace(".", "")
+                    .replace(",", ".");
+            return new BigDecimal(normalized);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private String generateNewFilename(String originalName) {
@@ -228,6 +339,13 @@ public class ImportFileService {
                     LOGGER.error("Stream incompleto ao ler do MinIO");
             case IOException ignored -> LOGGER.error("Erro de IO ao processar arquivo");
             default -> LOGGER.error("Erro inesperado: {}", e.getMessage());
+        }
+    }
+
+    private void assertOwnedByCurrentUser(ImportFile importFile) {
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        if (importFile.getUser() == null || !currentUserId.equals(importFile.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recurso nao pertence ao usuario autenticado");
         }
     }
 }

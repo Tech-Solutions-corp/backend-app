@@ -14,7 +14,6 @@ public class ImportMapper {
     public static ImportFile toModel(ImportRequestDTO dto) {
         ImportFile importFile = new ImportFile();
         importFile.setFileName(dto.fileName());
-        importFile.setStatus(dto.status());
         return importFile;
     }
 

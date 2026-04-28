@@ -1,16 +1,21 @@
 package org.tech_solutions.application.transactions.service;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.tech_solutions.application.accounts.model.Account;
 import org.tech_solutions.application.accounts.repository.AccountRepository;
 import org.tech_solutions.application.categories.model.Category;
 import org.tech_solutions.application.categories.repository.CategoryRepository;
+import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
+import org.tech_solutions.application.transactions.enums.TransactionType;
 import org.tech_solutions.application.transactions.model.Transaction;
 import org.tech_solutions.application.transactions.repository.TransactionRepository;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,39 +26,51 @@ public class TransactionService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final CurrentUserService currentUserService;
 
     public TransactionService(
             TransactionRepository transactionRepository,
             UserRepository userRepository,
             AccountRepository accountRepository,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            CurrentUserService currentUserService
     ) {
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
+        this.currentUserService = currentUserService;
     }
 
     public Transaction create(Transaction transaction, Long userId, Long accountId, Long categoryId) {
-        transaction.setUser(findUser(userId));
-        transaction.setAccount(findAccount(accountId));
-        transaction.setCategory(findCategory(categoryId));
+        User currentUser = currentUserService.requireCurrentUser();
+        Account account = findOwnedAccount(accountId);
+        Category category = findOwnedCategory(categoryId);
+
+        transaction.setUser(currentUser);
+        transaction.setAccount(account);
+        transaction.setCategory(category);
         transaction.setCreatedAt(LocalDateTime.now());
+
+        applyBalanceChange(account, transaction.getTransactionType(), transaction.getAmount(), false);
+        accountRepository.save(account);
+
         return transactionRepository.save(transaction);
     }
 
     public List<Transaction> listAll() {
-        return transactionRepository.findAll();
+        return transactionRepository.findByUserId(currentUserService.requireCurrentUserId());
     }
 
     public List<Transaction> listByUser(Long userId) {
-        findUser(userId);
-        return transactionRepository.findByUserId(userId);
+        return transactionRepository.findByUserId(currentUserService.requireCurrentUserId());
     }
 
     public Transaction findById(Long id) {
-        return transactionRepository.findById(id)
+        Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Transacao nao encontrada"));
+        assertOwnedByCurrentUser(transaction);
+        return transaction;
     }
 
     public Transaction update(
@@ -64,18 +81,38 @@ public class TransactionService {
             Long categoryId
     ) {
         Transaction current = findById(id);
-        current.setUser(findUser(userId));
-        current.setAccount(findAccount(accountId));
-        current.setCategory(findCategory(categoryId));
+        Account previousAccount = current.getAccount();
+        User currentUser = currentUserService.requireCurrentUser();
+        Account newAccount = findOwnedAccount(accountId);
+        Category newCategory = findOwnedCategory(categoryId);
+
+        boolean sameAccount = previousAccount.getId().equals(newAccount.getId());
+        Account accountToAdjust = sameAccount ? previousAccount : newAccount;
+
+        applyBalanceChange(previousAccount, current.getTransactionType(), current.getAmount(), true);
+
+        current.setUser(currentUser);
+        current.setAccount(accountToAdjust);
+        current.setCategory(newCategory);
         current.setTransactionDescription(updated.getTransactionDescription());
         current.setAmount(updated.getAmount());
         current.setTransactionDate(updated.getTransactionDate());
         current.setTransactionType(updated.getTransactionType());
+
+        applyBalanceChange(accountToAdjust, current.getTransactionType(), current.getAmount(), false);
+
+        accountRepository.save(previousAccount);
+        if (!sameAccount) {
+            accountRepository.save(newAccount);
+        }
         return transactionRepository.save(current);
     }
 
     public void delete(Long id) {
-        transactionRepository.delete(findById(id));
+        Transaction current = findById(id);
+        applyBalanceChange(current.getAccount(), current.getTransactionType(), current.getAmount(), true);
+        accountRepository.save(current.getAccount());
+        transactionRepository.delete(current);
     }
 
     private User findUser(Long userId) {
@@ -83,17 +120,52 @@ public class TransactionService {
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
     }
 
-    private Account findAccount(Long accountId) {
-        return accountRepository.findById(accountId)
+    private Account findOwnedAccount(Long accountId) {
+        Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Conta nao encontrada"));
+        assertOwnedByCurrentUser(account);
+        return account;
     }
 
-    private Category findCategory(Long categoryId) {
+    private Category findOwnedCategory(Long categoryId) {
         if (categoryId == null) {
             return null;
         }
-        return categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("Categoria nao encontrada"));
+        assertOwnedByCurrentUser(category);
+        return category;
+    }
+
+    private void applyBalanceChange(Account account, TransactionType type, BigDecimal amount, boolean reverse) {
+        BigDecimal currentBalance = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
+        BigDecimal signedAmount = type == TransactionType.INCOME ? amount : amount.negate();
+        if (reverse) {
+            signedAmount = signedAmount.negate();
+        }
+        account.setBalance(currentBalance.add(signedAmount));
+        account.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private void assertOwnedByCurrentUser(Account account) {
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        if (account.getUser() == null || !currentUserId.equals(account.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recurso nao pertence ao usuario autenticado");
+        }
+    }
+
+    private void assertOwnedByCurrentUser(Category category) {
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        if (category.getUser() == null || !currentUserId.equals(category.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recurso nao pertence ao usuario autenticado");
+        }
+    }
+
+    private void assertOwnedByCurrentUser(Transaction transaction) {
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        if (transaction.getUser() == null || !currentUserId.equals(transaction.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recurso nao pertence ao usuario autenticado");
+        }
     }
 }
 

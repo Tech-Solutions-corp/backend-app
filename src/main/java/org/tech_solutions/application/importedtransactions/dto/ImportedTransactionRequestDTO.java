@@ -10,8 +10,7 @@ public record ImportedTransactionRequestDTO(
         Long importId,
         String rawDescription,
         BigDecimal rawAmount,
-        LocalDate rawDate,
-        Boolean processed
+        LocalDate rawDate
 ) {
 }
 

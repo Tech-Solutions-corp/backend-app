@@ -16,7 +16,6 @@ public class ImportedTransactionMapper {
         transaction.setRawDescription(dto.rawDescription());
         transaction.setRawAmount(dto.rawAmount());
         transaction.setRawDate(dto.rawDate());
-        transaction.setProcessed(dto.processed());
         return transaction;
     }
 
