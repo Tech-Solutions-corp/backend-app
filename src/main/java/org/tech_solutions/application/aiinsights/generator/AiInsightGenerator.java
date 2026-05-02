@@ -95,7 +95,7 @@ public class AiInsightGenerator {
 
                 // 2. Monta o prompt com os dados
                 String prompt = buildPromptWithSpecification(expensesByCategory, incomeVsExpense,
-                                topExpenses, importedSummary, fileDetails, startDate, endDate, specification);
+                                topExpenses, importedSummary, fileDetails, startDate, endDate, insightType, specification);
 
                 // 3. Chama o LLM
                 String insightContent = chatClient.prompt()
@@ -171,6 +171,8 @@ public class AiInsightGenerator {
                                 Analise os dados financeiros abaixo referentes ao período de %s até %s
                                 e dirija sua resposta diretamente ao usuário, usando a segunda pessoa do singular (você).
 
+                                Use texto simples, sem formatação Markdown, sem negrito, sem listas com asteriscos ou símbolos.
+
                                 Gastos por categoria: %s
                                 Receita total vs Despesa total: %s
                                 Maiores gastos individuais: %s
@@ -178,17 +180,17 @@ public class AiInsightGenerator {
                                 Transações importadas - detalhes do extrato:
                                 %s
 
-                                Estruture sua resposta exatamente assim:
+                                Estruture sua resposta em parágrafos claros e práticos:
 
-                                1. **Resumo do seu período**
+                                1. Resumo do seu período
                                 Apresente um panorama geral de como foi a saúde financeira do usuário no período, sempre informando e
                                 destacando seu saldo final segundo os dados apresentados.
 
-                                2. **Principal padrão identificado nos seus gastos**
+                                2. Principal padrão identificado nos seus gastos
                                 Aponte o comportamento financeiro mais relevante identificado nos dados,
                                 explicando o impacto que ele pode ter no orçamento do usuário.
 
-                                3. **Uma dica prática para você melhorar**
+                                3. Uma dica prática para você melhorar
                                 Ofereça uma sugestão concreta, personalizada com base nos dados apresentados,
                                 que o usuário possa aplicar no próximo período.
                                 """
@@ -212,6 +214,7 @@ public class AiInsightGenerator {
                         List<String> fileDetails,
                         LocalDate startDate,
                         LocalDate endDate,
+                        InsightType insightType,
                         String specification) {
                 // Formata gastos por categoria
                 String categoriesFormatted = expensesByCategory.stream()
@@ -258,7 +261,7 @@ public class AiInsightGenerator {
                                                 .limit(20)
                                                 .collect(Collectors.joining("\n"));
 
-                return """
+                String basePrompt = """
                                 Você é um assistente financeiro pessoal integrado a um aplicativo de gestão financeira.
                                 Seu objetivo é ajudar o usuário a entender melhor seus hábitos financeiros de forma
                                 clara, empática e direta.
@@ -274,8 +277,6 @@ public class AiInsightGenerator {
                                 Transações importadas - detalhes do extrato:
                                 %s
 
-                                Dirija sua resposta diretamente ao usuário, usando a segunda pessoa do singular (você).
-                                Estruture sua resposta de forma clara, prática e focada na requisição do usuário.
                                 """.formatted(
                                 startDate,
                                 endDate,
@@ -287,5 +288,29 @@ public class AiInsightGenerator {
                                                 : topExpensesFormatted,
                                 importedFormatted,
                                 fileDetailsFormatted);
+
+                String specificInstructions = switch (insightType) {
+                        case SPENDING_PATTERN -> """
+                                Foque em identificar padrões nos gastos do usuário. Analise tendências, categorias mais gastas,
+                                frequência de gastos e possíveis hábitos recorrentes. Destaque insights sobre como os gastos
+                                se distribuem ao longo do tempo e categorias.
+                                """;
+                        case SAVING_TIP -> """
+                                Forneça dicas práticas e personalizadas para economizar dinheiro. Baseie-se nos dados para
+                                sugerir cortes em gastos desnecessários, alternativas mais baratas ou estratégias de poupança.
+                                Seja específico e acionável.
+                                """;
+                        case ANOMALY_DETECTION -> """
+                                Identifique transações ou padrões incomuns que possam indicar erros, fraudes ou gastos
+                                extraordinários. Compare com o histórico normal e destaque qualquer anomalia significativa.
+                                """;
+                };
+
+                return basePrompt + specificInstructions + """
+
+                                Use texto simples, sem formatação Markdown, sem negrito, sem listas com asteriscos ou símbolos.
+                                Dirija sua resposta diretamente ao usuário, usando a segunda pessoa do singular (você).
+                                Estruture sua resposta de forma clara, prática e focada na requisição do usuário e no tipo de análise solicitada.
+                                """;
         }
 }
