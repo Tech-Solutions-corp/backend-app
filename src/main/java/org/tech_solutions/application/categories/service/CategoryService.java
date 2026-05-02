@@ -4,6 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.tech_solutions.application.categories.model.Category;
+import org.tech_solutions.application.transactions.model.Transaction;
+import org.tech_solutions.application.transactions.repository.TransactionRepository;
 import org.tech_solutions.application.categories.repository.CategoryRepository;
 import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
@@ -19,11 +21,14 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
+    private final TransactionRepository transactionRepository;
 
-    public CategoryService(CategoryRepository categoryRepository, UserRepository userRepository, CurrentUserService currentUserService) {
+    public CategoryService(CategoryRepository categoryRepository, UserRepository userRepository,
+            CurrentUserService currentUserService, TransactionRepository transactionRepository) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.currentUserService = currentUserService;
+        this.transactionRepository = transactionRepository;
     }
 
     public Category create(Category category, Long userId) {
@@ -56,7 +61,33 @@ public class CategoryService {
     }
 
     public void delete(Long id) {
-        categoryRepository.delete(findById(id));
+        delete(id, null);
+    }
+
+    public void delete(Long id, Long reassignToCategoryId) {
+        Category category = findById(id);
+
+        Category reassignCategory = null;
+        if (reassignToCategoryId != null) {
+            reassignCategory = categoryRepository.findById(reassignToCategoryId)
+                    .orElseThrow(() -> new EntityNotFoundException("Categoria de reatribuição nao encontrada"));
+            assertOwnedByCurrentUser(reassignCategory);
+            if (reassignCategory.getId().equals(category.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Categoria de reatribuição deve ser diferente");
+            }
+        }
+
+        // Reassign or nullify category on related transactions
+        List<Transaction> related = transactionRepository.findByCategoryId(category.getId());
+        for (Transaction t : related) {
+            t.setCategory(reassignCategory);
+        }
+        if (!related.isEmpty()) {
+            transactionRepository.saveAll(related);
+        }
+
+        categoryRepository.delete(category);
     }
 
     private User findUser(Long userId) {
@@ -71,5 +102,3 @@ public class CategoryService {
         }
     }
 }
-
-

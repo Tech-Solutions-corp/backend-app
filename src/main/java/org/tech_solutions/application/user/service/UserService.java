@@ -2,6 +2,7 @@ package org.tech_solutions.application.user.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
 import org.tech_solutions.application.shared.exception.ExistingEntityException;
 import org.tech_solutions.application.user.model.User;
@@ -14,14 +15,17 @@ import java.util.List;
 public class UserService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final CurrentUserService currentUserService;
 
-    public UserService(UserRepository repository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository repository, PasswordEncoder passwordEncoder,
+            CurrentUserService currentUserService) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.currentUserService = currentUserService;
     }
 
     public User registrate(User newUser) {
-        if(repository.existsByEmail(newUser.getEmail())) {
+        if (repository.existsByEmail(newUser.getEmail())) {
             throw new ExistingEntityException("Usuário já existente no sistema para esse email");
         }
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
@@ -57,5 +61,21 @@ public class UserService {
     public void delete(Long id) {
         User current = findById(id);
         repository.delete(current);
+    }
+
+    public void changeEmail(String currentPassword, String newEmail) {
+        User user = currentUserService.requireCurrentUser();
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Senha atual invalida");
+        }
+
+        if (repository.existsByEmailAndIdNot(newEmail, user.getId())) {
+            throw new ExistingEntityException("E-mail ja registrado no sistema");
+        }
+
+        user.setEmail(newEmail);
+        user.setUpdatedAt(LocalDateTime.now());
+        repository.save(user);
     }
 }

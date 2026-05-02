@@ -7,12 +7,15 @@ import org.tech_solutions.application.user.dto.UserRegisterDTO;
 import org.tech_solutions.application.user.dto.UserDataDTO;
 import org.tech_solutions.application.user.dto.UserUpdateDTO;
 import org.tech_solutions.application.auth.dto.LoginDTO;
+import org.tech_solutions.application.user.dto.ChangeEmailRequestDTO;
+import org.tech_solutions.application.user.dto.ChangePasswordRequestDTO;
 import org.tech_solutions.application.user.dto.ForgotPasswordRequestDTO;
 import org.tech_solutions.application.user.dto.ResetPasswordRequestDTO;
 import org.tech_solutions.application.user.dto.UserLogedDTO;
 import org.tech_solutions.application.user.mapper.UserMapper;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.auth.service.AuthService;
+import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.user.service.PasswordRecoveryService;
 import org.tech_solutions.application.user.service.UserService;
 
@@ -24,15 +27,17 @@ public class UserController {
     private final AuthService authService;
     private final UserService userService;
     private final PasswordRecoveryService passwordRecoveryService;
+    private final CurrentUserService currentUserService;
 
     public UserController(
             AuthService authService,
             UserService userService,
-            PasswordRecoveryService passwordRecoveryService
-    ) {
+            PasswordRecoveryService passwordRecoveryService,
+            CurrentUserService currentUserService) {
         this.authService = authService;
         this.userService = userService;
         this.passwordRecoveryService = passwordRecoveryService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping("/auth")
@@ -59,13 +64,33 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/password/change")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
+        passwordRecoveryService.changePassword(
+                request.currentPassword(),
+                request.newPassword(),
+                request.confirmNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/email/change")
+    public ResponseEntity<Void> changeEmail(@Valid @RequestBody ChangeEmailRequestDTO request) {
+        userService.changeEmail(request.currentPassword(), request.newEmail());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<List<UserDataDTO>> listAll() {
         List<User> foundUsers = userService.listAll();
 
-        return foundUsers.isEmpty() ?
-                ResponseEntity.status(204).build()
-             :  ResponseEntity.status(200).body(UserMapper.toDTO(foundUsers));
+        return foundUsers.isEmpty() ? ResponseEntity.status(204).build()
+                : ResponseEntity.status(200).body(UserMapper.toDTO(foundUsers));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDataDTO> getCurrentUser() {
+        User currentUser = currentUserService.requireCurrentUser();
+        return ResponseEntity.ok(UserMapper.toDTO(currentUser));
     }
 
     @GetMapping("/{id}")
@@ -77,8 +102,7 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserDataDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody UserUpdateDTO request
-    ) {
+            @Valid @RequestBody UserUpdateDTO request) {
         User updated = userService.update(id, UserMapper.toModel(request));
         return ResponseEntity.ok(UserMapper.toDTO(updated));
     }

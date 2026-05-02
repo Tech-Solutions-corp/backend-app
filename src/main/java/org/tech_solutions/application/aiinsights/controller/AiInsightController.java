@@ -5,10 +5,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.tech_solutions.application.aiinsights.dto.AiInsightDataDTO;
 import org.tech_solutions.application.aiinsights.dto.AiInsightRequestDTO;
+import org.tech_solutions.application.aiinsights.dto.GenerateAiInsightRequestDTO;
 import org.tech_solutions.application.aiinsights.generator.AiInsightGenerator;
 import org.tech_solutions.application.aiinsights.mapper.AiInsightMapper;
 import org.tech_solutions.application.aiinsights.model.AiInsight;
 import org.tech_solutions.application.aiinsights.service.AiInsightService;
+import org.tech_solutions.application.security.CurrentUserService;
 
 import java.util.List;
 
@@ -18,13 +20,15 @@ public class AiInsightController {
 
     private final AiInsightService aiInsightService;
     private final AiInsightGenerator aiInsightGenerator;
+    private final CurrentUserService currentUserService;
 
     public AiInsightController(
             AiInsightService aiInsightService,
-            AiInsightGenerator aiInsightGenerator
-    ) {
+            AiInsightGenerator aiInsightGenerator,
+            CurrentUserService currentUserService) {
         this.aiInsightService = aiInsightService;
         this.aiInsightGenerator = aiInsightGenerator;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping
@@ -57,8 +61,7 @@ public class AiInsightController {
     @PutMapping("/{id}")
     public ResponseEntity<AiInsightDataDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody AiInsightRequestDTO request
-    ) {
+            @Valid @RequestBody AiInsightRequestDTO request) {
         AiInsight updated = aiInsightService.update(id, AiInsightMapper.toModel(request), request.userId());
         return ResponseEntity.ok(AiInsightMapper.toDTO(updated));
     }
@@ -72,6 +75,17 @@ public class AiInsightController {
     @PostMapping("/generate/{userId}")
     public ResponseEntity<AiInsightDataDTO> generate(@PathVariable Long userId) {
         AiInsight generated = aiInsightGenerator.generateAndSave(userId);
+        return ResponseEntity.status(201).body(AiInsightMapper.toDTO(generated));
+    }
+
+    @PostMapping("/generate")
+    public ResponseEntity<AiInsightDataDTO> generateWithSpecification(
+            @Valid @RequestBody GenerateAiInsightRequestDTO request) {
+        Long userId = currentUserService.requireCurrentUserId();
+        AiInsight generated = aiInsightGenerator.generateAndSaveWithSpecification(
+                userId,
+                request.insightType(),
+                request.specification());
         return ResponseEntity.status(201).body(AiInsightMapper.toDTO(generated));
     }
 }

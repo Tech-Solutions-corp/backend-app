@@ -5,47 +5,48 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.tech_solutions.application.imports.ImportValidationException;
 import org.tech_solutions.application.imports.UploadOperationException;
 import org.tech_solutions.application.shared.dto.ErrorDTO;
 
 @RestControllerAdvice
 public class HttpExceptionHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(HttpExceptionHandler.class);
+        private static final Logger LOGGER = LoggerFactory.getLogger(HttpExceptionHandler.class);
 
-    @ExceptionHandler(ExistingEntityException.class)
-    public ResponseEntity<ErrorDTO> entidadeExistenteHandler(ExistingEntityException ex) {
-        var response = new ErrorDTO(
-                HttpStatus.CONFLICT.value(),
-                ex.getMessage()
-        );
-        return ResponseEntity.status(409).body(response);
-    }
+        @ExceptionHandler(ExistingEntityException.class)
+        public ResponseEntity<ErrorDTO> entidadeExistenteHandler(ExistingEntityException ex) {
+                var response = new ErrorDTO(
+                                HttpStatus.CONFLICT.value(),
+                                ex.getMessage());
+                return ResponseEntity.status(409).body(response);
+        }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorDTO> entidadeNaoEncontradaHandler(EntityNotFoundException ex) {
-        var response = new ErrorDTO(
-                HttpStatus.NOT_FOUND.value(),
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
+        @ExceptionHandler(EntityNotFoundException.class)
+        public ResponseEntity<ErrorDTO> entidadeNaoEncontradaHandler(EntityNotFoundException ex) {
+                var response = new ErrorDTO(
+                                HttpStatus.NOT_FOUND.value(),
+                                ex.getMessage());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorDTO> handleValidationError(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Dados invalidos")
-                .orElse("Dados invalidos");
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity<ErrorDTO> handleValidationError(MethodArgumentNotValidException ex) {
+                String message = ex.getBindingResult().getFieldErrors().stream()
+                                .findFirst()
+                                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage()
+                                                : "Dados invalidos")
+                                .orElse("Dados invalidos");
 
-        ErrorDTO error = new ErrorDTO(HttpStatus.BAD_REQUEST.value(), message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
+                ErrorDTO error = new ErrorDTO(HttpStatus.BAD_REQUEST.value(), message);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
 
         @ExceptionHandler(IllegalArgumentException.class)
         public ResponseEntity<ErrorDTO> handleBadRequest(IllegalArgumentException ex) {
@@ -53,82 +54,91 @@ public class HttpExceptionHandler {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorDTO> handleNotFound(NoHandlerFoundException ex) {
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.NOT_FOUND.value(),
-                "Endpoint não encontrado: " + ex.getRequestURL()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-    }
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<ErrorDTO> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+                String parameterName = ex.getName() != null ? ex.getName() : "parametro";
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.BAD_REQUEST.value(),
+                                "Parâmetro inválido: " + parameterName);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
 
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorDTO> handleMethodNotSupported(
-            HttpRequestMethodNotSupportedException ex) {
+        @ExceptionHandler(BadCredentialsException.class)
+        public ResponseEntity<ErrorDTO> handleBadCredentials(BadCredentialsException ex) {
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Usuário inexistente ou senha inválida");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
 
-        String supportedMethods = ex.getSupportedMethods() == null
-                ? "nenhum"
-                : String.join(", ", ex.getSupportedMethods());
+        @ExceptionHandler(NoHandlerFoundException.class)
+        public ResponseEntity<ErrorDTO> handleNotFound(NoHandlerFoundException ex) {
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.NOT_FOUND.value(),
+                                "Endpoint não encontrado: " + ex.getRequestURL());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        }
 
-        String message = String.format(
-                "Método %s não suportado para este endpoint. Métodos permitidos: %s",
-                ex.getMethod(),
-                supportedMethods
-        );
+        @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+        public ResponseEntity<ErrorDTO> handleMethodNotSupported(
+                        HttpRequestMethodNotSupportedException ex) {
 
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.METHOD_NOT_ALLOWED.value(),
-                message
-        );
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
-    }
+                String supportedMethods = ex.getSupportedMethods() == null
+                                ? "nenhum"
+                                : String.join(", ", ex.getSupportedMethods());
 
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorDTO> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                "Arquivo excede o tamanho máximo permitido"
-        );
+                String message = String.format(
+                                "Método %s não suportado para este endpoint. Métodos permitidos: %s",
+                                ex.getMethod(),
+                                supportedMethods);
 
-        LOGGER.error("Arquivo excede o tamanho máximo permitido, tamanho máximo permitido: {}", ex.getMaxUploadSize(), ex);
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(error);
-    }
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                                message);
+                return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
+        }
 
-    @ExceptionHandler(ImportValidationException.class)
-    public ResponseEntity<ErrorDTO> handleimportValidationException(ImportValidationException ex) {
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage()
-        );
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity<ErrorDTO> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.BAD_REQUEST.value(),
+                                "Arquivo excede o tamanho máximo permitido");
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(error);
-    }
+                LOGGER.error("Arquivo excede o tamanho máximo permitido, tamanho máximo permitido: {}",
+                                ex.getMaxUploadSize(), ex);
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(error);
+        }
 
-    @ExceptionHandler(UploadOperationException.class)
-    public ResponseEntity<ErrorDTO> handleUploadOperationException(UploadOperationException ex) {
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage()
-        );
+        @ExceptionHandler(ImportValidationException.class)
+        public ResponseEntity<ErrorDTO> handleimportValidationException(ImportValidationException ex) {
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.BAD_REQUEST.value(),
+                                ex.getMessage());
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(error);
-    }
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(error);
+        }
 
+        @ExceptionHandler(UploadOperationException.class)
+        public ResponseEntity<ErrorDTO> handleUploadOperationException(UploadOperationException ex) {
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.BAD_REQUEST.value(),
+                                ex.getMessage());
 
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(error);
+        }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorDTO> handleGenericException(Exception ex) {
-        LOGGER.error("Erro: {}", ex.getMessage());
-        ErrorDTO error = new ErrorDTO(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erro interno no servidor, tente novamente mais tarde"
-        );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-    }
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity<ErrorDTO> handleGenericException(Exception ex) {
+                LOGGER.error("Erro: {}", ex.getMessage());
+                ErrorDTO error = new ErrorDTO(
+                                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                                "Erro interno no servidor, tente novamente mais tarde");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
 }

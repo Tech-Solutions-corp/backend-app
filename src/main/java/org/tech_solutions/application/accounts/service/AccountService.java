@@ -2,11 +2,13 @@ package org.tech_solutions.application.accounts.service;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.tech_solutions.application.accounts.model.Account;
 import org.tech_solutions.application.accounts.repository.AccountRepository;
 import org.tech_solutions.application.security.CurrentUserService;
 import org.tech_solutions.application.shared.exception.EntityNotFoundException;
+import org.tech_solutions.application.transactions.repository.TransactionRepository;
 import org.tech_solutions.application.user.model.User;
 import org.tech_solutions.application.user.repository.UserRepository;
 
@@ -18,11 +20,17 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
     private final CurrentUserService currentUserService;
 
-    public AccountService(AccountRepository accountRepository, UserRepository userRepository, CurrentUserService currentUserService) {
+    public AccountService(
+            AccountRepository accountRepository,
+            UserRepository userRepository,
+            TransactionRepository transactionRepository,
+            CurrentUserService currentUserService) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
         this.currentUserService = currentUserService;
     }
 
@@ -61,8 +69,11 @@ public class AccountService {
         return accountRepository.save(current);
     }
 
+    @Transactional
     public void delete(Long id) {
         Account current = findById(id);
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        transactionRepository.deleteByAccountIdAndUserId(current.getId(), currentUserId);
         accountRepository.delete(current);
     }
 
@@ -78,4 +89,3 @@ public class AccountService {
         }
     }
 }
-

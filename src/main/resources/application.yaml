@@ -27,7 +27,6 @@ spring:
     password: ${DB_PASSWORD:financial_db_password}
   flyway:
     enabled: true
-    baseline-on-migrate: true
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -45,7 +44,7 @@ application:
       expiration-time: ${JWT_EXPIRATION:7200000}
       password-reset-expiration-time: ${JWT_PASSWORD_RESET_EXPIRATION:900000}
     cors:
-      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082,http://localhost:19006,http://127.0.0.1:19006}
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
     frontend:
       reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:http://localhost:8081/redefinir-senha}
     mail:

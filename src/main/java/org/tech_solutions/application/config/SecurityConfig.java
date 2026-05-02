@@ -32,7 +32,7 @@ public class SecurityConfig {
     private final AuthEntryPoint unauthorizedHandler;
     private final AuthTokenFilter tokenFilter;
 
-    @Value("${application.var.cors.allowed-origins:http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082,http://localhost:19006,http://127.0.0.1:19006}")
+    @Value("${application.var.cors.allowed-origins:*}")
     private String allowedOrigins;
 
     private static final String[] URLS_PUBLICAS = {
@@ -85,7 +85,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
+
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+
+        if (origins.contains("*")) {
+            // With credentials enabled, Spring must use origin patterns instead of literal "*".
+            config.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            config.setAllowedOrigins(origins);
+        }
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
