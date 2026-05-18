@@ -33,9 +33,9 @@ public class ImportController {
     @PostMapping("/{userId}/upload")
     public ResponseEntity<Map<String, String>> upload(
             @PathVariable Long userId,
-            @RequestParam("file") MultipartFile file
-    ) {
-        importFileService.upload(file, userId);
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("accountId") Long accountId) {
+        importFileService.upload(file, userId, accountId);
         return ResponseEntity.status(200).body(Map.of("message", "Extrato carregado com sucesso"));
     }
 
@@ -63,8 +63,7 @@ public class ImportController {
     @PutMapping("/{id}")
     public ResponseEntity<ImportDataDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody ImportRequestDTO request
-    ) {
+            @Valid @RequestBody ImportRequestDTO request) {
         ImportFile updated = importFileService.update(id, ImportMapper.toModel(request), request.userId());
         return ResponseEntity.ok(ImportMapper.toDTO(updated));
     }
@@ -75,5 +74,3 @@ public class ImportController {
         return ResponseEntity.noContent().build();
     }
 }
-
-

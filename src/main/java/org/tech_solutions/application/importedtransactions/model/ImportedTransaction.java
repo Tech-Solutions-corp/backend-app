@@ -18,8 +18,32 @@ public class ImportedTransaction {
     @JoinColumn(name = "import_id", nullable = false)
     private ImportFile importFile;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private org.tech_solutions.application.accounts.model.Account account;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private org.tech_solutions.application.categories.model.Category category;
+
     @Column(name = "raw_description", length = 255)
     private String rawDescription;
+
+    public org.tech_solutions.application.categories.model.Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(org.tech_solutions.application.categories.model.Category category) {
+        this.category = category;
+    }
+
+    public org.tech_solutions.application.accounts.model.Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(org.tech_solutions.application.accounts.model.Account account) {
+        this.account = account;
+    }
 
     @Column(name = "raw_amount")
     private BigDecimal rawAmount;
@@ -81,5 +105,3 @@ public class ImportedTransaction {
         this.processed = processed;
     }
 }
-
-

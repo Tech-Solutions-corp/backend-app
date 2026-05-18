@@ -51,17 +51,20 @@ public class AccountController {
     @PutMapping("/{id}")
     public ResponseEntity<AccountDataDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody AccountRequestDTO request
-    ) {
+            @Valid @RequestBody AccountRequestDTO request) {
         Account updated = accountService.update(id, AccountMapper.toModel(request), request.userId());
         return ResponseEntity.ok(AccountMapper.toDTO(updated));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        accountService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestParam(value = "reassignToAccountId", required = false) Long reassignToAccountId) {
+        if (reassignToAccountId != null) {
+            accountService.delete(id, reassignToAccountId);
+        } else {
+            accountService.delete(id);
+        }
         return ResponseEntity.noContent().build();
     }
 }
-
-

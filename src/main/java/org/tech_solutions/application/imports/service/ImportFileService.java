@@ -1,5 +1,11 @@
 package org.tech_solutions.application.imports.service;
 
+import org.springframework.ai.chat.client.ChatClient;
+import org.tech_solutions.application.categories.model.Category;
+import org.tech_solutions.application.categories.repository.CategoryRepository;
+import org.tech_solutions.application.accounts.model.Account;
+import org.tech_solutions.application.accounts.repository.AccountRepository;
+
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
@@ -49,17 +55,25 @@ public class ImportFileService {
     private final ImportFileRepository importFileRepository;
     private final ImportedTransactionRepository importedTransactionRepository;
     private final CurrentUserService currentUserService;
+    private final AccountRepository accountRepository;
+    private final ChatClient chatClient;
+    private final CategoryRepository categoryRepository;
 
     public ImportFileService(
             MinioClient minioClient,
             ImportFileRepository importFileRepository,
             ImportedTransactionRepository importedTransactionRepository,
-            CurrentUserService currentUserService
-    ) {
+            CurrentUserService currentUserService,
+            AccountRepository accountRepository,
+            ChatClient chatClient,
+            CategoryRepository categoryRepository) {
         this.minioClient = minioClient;
         this.importFileRepository = importFileRepository;
         this.importedTransactionRepository = importedTransactionRepository;
         this.currentUserService = currentUserService;
+        this.accountRepository = accountRepository;
+        this.chatClient = chatClient;
+        this.categoryRepository = categoryRepository;
     }
 
     public void inicializarBucket() {
@@ -67,15 +81,13 @@ public class ImportFileService {
             boolean existe = minioClient.bucketExists(
                     BucketExistsArgs.builder()
                             .bucket(bucket)
-                            .build()
-            );
+                            .build());
 
             if (!existe) {
                 minioClient.makeBucket(
                         MakeBucketArgs.builder()
                                 .bucket(bucket)
-                                .build()
-                );
+                                .build());
                 LOGGER.info("Bucket '{}' criado com sucesso.", bucket);
             } else {
                 LOGGER.info("Bucket '{}' já existe, nenhuma ação necessária.", bucket);
@@ -121,8 +133,8 @@ public class ImportFileService {
         importFileRepository.delete(findById(id));
     }
 
-    public void upload(MultipartFile file, Long userId) {
-        if(file == null) {
+    public void upload(MultipartFile file, Long userId, Long accountId) {
+        if (file == null) {
             LOGGER.error("'file' foi recebido como nulo");
             throw new ImportValidationException("Arquivo recebido como vazio pelo sistema");
         }
@@ -147,15 +159,14 @@ public class ImportFileService {
                             .object(filename)
                             .stream(new ByteArrayInputStream(fileBytes), fileBytes.length, -1)
                             .contentType(file.getContentType())
-                            .build()
-            );
+                            .build());
             LOGGER.info("response: {}", response.object());
 
             LOGGER.info("Arquivo carregado no bucket {}", bucket);
 
             LOGGER.info("Salvando informações sobre o upload do arquivo na base relacional...");
             ImportFile savedImport = this.create(fileInfos, userId);
-            persistImportedTransactions(savedImport, fileBytes);
+            persistImportedTransactions(savedImport, fileBytes, accountId);
             savedImport.setStatus(ImportStatus.COMPLETED);
             importFileRepository.save(savedImport);
 
@@ -168,14 +179,13 @@ public class ImportFileService {
     }
 
     public List<String> fetchCsvDescriptions(Long userId,
-                                             LocalDate startDate,
-                                             LocalDate endDate) {
+            LocalDate startDate,
+            LocalDate endDate) {
         List<ImportFile> files = importFileRepository.findCompletedByUserAndPeriod(
-            currentUserService.requireCurrentUserId(),
-            ImportStatus.COMPLETED,
+                currentUserService.requireCurrentUserId(),
+                ImportStatus.COMPLETED,
                 startDate.atStartOfDay(),
-                endDate.atTime(23, 59, 59)
-        );
+                endDate.atTime(23, 59, 59));
 
         List<String> descriptions = new ArrayList<>();
 
@@ -184,11 +194,9 @@ public class ImportFileService {
                     GetObjectArgs.builder()
                             .bucket(bucket)
                             .object(file.getFileName())
-                            .build()
-            )) {
+                            .build())) {
                 BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(stream, StandardCharsets.UTF_8)
-                );
+                        new InputStreamReader(stream, StandardCharsets.UTF_8));
 
                 // Pula o header
                 reader.readLine();
@@ -198,9 +206,9 @@ public class ImportFileService {
                     String[] columns = parseCsvLine(line);
                     if (columns.length >= 3) {
                         String desc = "%s | %s | R$%s".formatted(
-                                columns[0].trim(),  // data
-                                columns[1].trim(),  // descrição
-                                columns[2].trim()   // valor
+                                columns[0].trim(), // data
+                                columns[1].trim(), // descrição
+                                columns[2].trim() // valor
                         );
                         descriptions.add(desc);
                     }
@@ -214,12 +222,16 @@ public class ImportFileService {
         return descriptions;
     }
 
-    private void persistImportedTransactions(ImportFile importFile, byte[] fileBytes) {
+    private void persistImportedTransactions(ImportFile importFile, byte[] fileBytes, Long accountId) {
         List<ImportedTransaction> importedTransactions = new ArrayList<>();
 
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new UploadOperationException("Conta não encontrada para o ID informado"));
+
+        Long userId = importFile.getUser().getId();
+
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new ByteArrayInputStream(fileBytes), StandardCharsets.UTF_8)
-        )) {
+                new InputStreamReader(new ByteArrayInputStream(fileBytes), StandardCharsets.UTF_8))) {
             String header = reader.readLine();
             if (header == null) {
                 return;
@@ -238,11 +250,18 @@ public class ImportFileService {
                     continue;
                 }
 
+                String description = columns[1].trim();
+                // IA sugere categoria
+                String suggestedCategoryName = suggestCategoryWithAI(description, rawAmount, rawDate);
+                Category category = findOrCreateCategory(suggestedCategoryName, userId);
+
                 ImportedTransaction importedTransaction = new ImportedTransaction();
                 importedTransaction.setImportFile(importFile);
-                importedTransaction.setRawDescription(columns[1].trim());
+                importedTransaction.setAccount(account);
+                importedTransaction.setRawDescription(description);
                 importedTransaction.setRawAmount(rawAmount);
                 importedTransaction.setRawDate(rawDate);
+                importedTransaction.setCategory(category);
                 importedTransaction.setProcessed(false);
                 importedTransactions.add(importedTransaction);
             }
@@ -253,6 +272,35 @@ public class ImportFileService {
         if (!importedTransactions.isEmpty()) {
             importedTransactionRepository.saveAll(importedTransactions);
         }
+    }
+
+    private String suggestCategoryWithAI(String description, BigDecimal amount, LocalDate date) {
+        String prompt = "Sugira a categoria mais adequada para a seguinte transação bancária: " +
+                "Descrição: '" + description + "', Valor: '" + amount + "', Data: '" + date + "'. " +
+                "Responda apenas com o nome da categoria, sem explicações.";
+        try {
+            String result = chatClient.prompt().user(prompt).call().content();
+            return result != null ? result.trim() : "Outros";
+        } catch (Exception e) {
+            LOGGER.warn("Falha ao sugerir categoria via IA, usando 'Outros'", e);
+            return "Outros";
+        }
+    }
+
+    private Category findOrCreateCategory(String categoryName, Long userId) {
+        List<Category> userCategories = categoryRepository.findByUserId(userId);
+        return userCategories.stream()
+                .filter(cat -> cat.getName().equalsIgnoreCase(categoryName))
+                .findFirst()
+                .orElseGet(() -> {
+                    Category newCat = new Category();
+                    newCat.setName(categoryName);
+                    newCat.setUser(importFileRepository.findByUserId(userId).stream().findFirst()
+                            .map(ImportFile::getUser).orElse(null));
+                    newCat.setType(org.tech_solutions.application.categories.enums.CategoryType.EXPENSE); // padrão
+                    newCat.setCreatedAt(LocalDateTime.now());
+                    return categoryRepository.save(newCat);
+                });
     }
 
     private String[] parseCsvLine(String line) {
@@ -334,9 +382,9 @@ public class ImportFileService {
     private void handleMinioGetException(Exception e) {
         switch (e) {
             case ErrorResponseException err ->
-                    LOGGER.error("Erro MinIO (objeto/bucket): {} ", err.errorResponse().message());
+                LOGGER.error("Erro MinIO (objeto/bucket): {} ", err.errorResponse().message());
             case InsufficientDataException ignored ->
-                    LOGGER.error("Stream incompleto ao ler do MinIO");
+                LOGGER.error("Stream incompleto ao ler do MinIO");
             case IOException ignored -> LOGGER.error("Erro de IO ao processar arquivo");
             default -> LOGGER.error("Erro inesperado: {}", e.getMessage());
         }
@@ -349,5 +397,3 @@ public class ImportFileService {
         }
     }
 }
-
-

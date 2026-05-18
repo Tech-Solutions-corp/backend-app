@@ -59,8 +59,12 @@ public class CategoryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
-            @RequestParam(value = "reassignTo", required = false) Long reassignTo) {
-        categoryService.delete(id, reassignTo);
+            @RequestParam(value = "reassignToCategoryId", required = false) Long reassignToCategoryId) {
+        if (reassignToCategoryId != null) {
+            categoryService.delete(id, reassignToCategoryId);
+        } else {
+            categoryService.delete(id);
+        }
         return ResponseEntity.noContent().build();
     }
 }

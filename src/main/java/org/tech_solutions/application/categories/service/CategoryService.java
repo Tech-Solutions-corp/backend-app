@@ -1,4 +1,6 @@
 package org.tech_solutions.application.categories.service;
+import org.tech_solutions.application.importedtransactions.repository.ImportedTransactionRepository;
+import org.tech_solutions.application.importedtransactions.model.ImportedTransaction;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,13 +24,16 @@ public class CategoryService {
     private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
     private final TransactionRepository transactionRepository;
+    private final ImportedTransactionRepository importedTransactionRepository;
 
     public CategoryService(CategoryRepository categoryRepository, UserRepository userRepository,
-            CurrentUserService currentUserService, TransactionRepository transactionRepository) {
+            CurrentUserService currentUserService, TransactionRepository transactionRepository,
+            ImportedTransactionRepository importedTransactionRepository) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.currentUserService = currentUserService;
         this.transactionRepository = transactionRepository;
+        this.importedTransactionRepository = importedTransactionRepository;
     }
 
     public Category create(Category category, Long userId) {
@@ -78,13 +83,22 @@ public class CategoryService {
             }
         }
 
-        // Reassign or nullify category on related transactions
+        // Reatribuir ou remover categoria em transações principais
         List<Transaction> related = transactionRepository.findByCategoryId(category.getId());
         for (Transaction t : related) {
             t.setCategory(reassignCategory);
         }
         if (!related.isEmpty()) {
             transactionRepository.saveAll(related);
+        }
+
+        // Reatribuir ou remover categoria em transações importadas
+        List<ImportedTransaction> imported = importedTransactionRepository.findByCategoryId(category.getId());
+        for (ImportedTransaction it : imported) {
+            it.setCategory(reassignCategory);
+        }
+        if (!imported.isEmpty()) {
+            importedTransactionRepository.saveAll(imported);
         }
 
         categoryRepository.delete(category);

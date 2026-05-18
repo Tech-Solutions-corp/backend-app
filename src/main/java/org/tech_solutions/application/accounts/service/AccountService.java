@@ -1,4 +1,6 @@
 package org.tech_solutions.application.accounts.service;
+import org.tech_solutions.application.importedtransactions.repository.ImportedTransactionRepository;
+import org.tech_solutions.application.importedtransactions.model.ImportedTransaction;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,16 +24,19 @@ public class AccountService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final CurrentUserService currentUserService;
+    private final ImportedTransactionRepository importedTransactionRepository;
 
     public AccountService(
             AccountRepository accountRepository,
             UserRepository userRepository,
             TransactionRepository transactionRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            ImportedTransactionRepository importedTransactionRepository) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.currentUserService = currentUserService;
+        this.importedTransactionRepository = importedTransactionRepository;
     }
 
     public Account create(Account account, Long userId) {
@@ -71,9 +76,51 @@ public class AccountService {
 
     @Transactional
     public void delete(Long id) {
+        delete(id, null);
+    }
+
+    @Transactional
+    public void delete(Long id, Long reassignToAccountId) {
         Account current = findById(id);
         Long currentUserId = currentUserService.requireCurrentUserId();
-        transactionRepository.deleteByAccountIdAndUserId(current.getId(), currentUserId);
+
+        Account reassignAccount = null;
+        if (reassignToAccountId != null) {
+            reassignAccount = accountRepository.findById(reassignToAccountId)
+                    .orElseThrow(() -> new EntityNotFoundException("Conta de reatribuição nao encontrada"));
+            assertOwnedByCurrentUser(reassignAccount);
+            if (reassignAccount.getId().equals(current.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conta de reatribuição deve ser diferente");
+            }
+        }
+
+        // Reatribuir ou excluir transações principais
+        if (reassignAccount != null) {
+            var transactions = transactionRepository.findByUserId(currentUserId)
+                    .stream().filter(t -> t.getAccount().getId().equals(current.getId())).toList();
+            for (var t : transactions) {
+                t.setAccount(reassignAccount);
+            }
+            if (!transactions.isEmpty())
+                transactionRepository.saveAll(transactions);
+        } else {
+            transactionRepository.deleteByAccountIdAndUserId(current.getId(), currentUserId);
+        }
+
+        // Reatribuir ou excluir transações importadas
+        if (reassignAccount != null) {
+            var imported = importedTransactionRepository.findByAccountId(current.getId());
+            for (ImportedTransaction it : imported) {
+                it.setAccount(reassignAccount);
+            }
+            if (!imported.isEmpty())
+                importedTransactionRepository.saveAll(imported);
+        } else {
+            var imported = importedTransactionRepository.findByAccountId(current.getId());
+            if (!imported.isEmpty())
+                importedTransactionRepository.deleteAll(imported);
+        }
+
         accountRepository.delete(current);
     }
 
