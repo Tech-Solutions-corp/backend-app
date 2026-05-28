@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface ImportedTransactionRepository extends JpaRepository<ImportedTransaction, Long> {
     List<ImportedTransaction> findByImportFileId(Long importId);
+    List<ImportedTransaction> findByImportFileIdAndProcessedFalseOrderByIdAsc(Long importId);
     List<ImportedTransaction> findByImportFileUserId(Long userId);
     List<ImportedTransaction> findByAccountId(Long accountId);
     List<ImportedTransaction> findByCategoryId(Long categoryId);

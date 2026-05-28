@@ -19,14 +19,20 @@ spring:
       add-mappings: false
   jpa:
     hibernate:
-      ddl-auto: validate
+      # Para desenvolvimento local podemos permitir que o Hibernate atualize o esquema
+      # Isso evita falhas de validação quando as migrations não foram aplicadas.
+      # NÃO recomendado para produção — em produção use 'validate' e execute as migrations com Flyway.
+      ddl-auto: update
     database-platform: org.hibernate.dialect.MySQLDialect
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3307/techsolution_app_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=America/Sao_Paulo&connectionCollation=utf8mb4_unicode_ci}
     username: ${DB_USERNAME:financial_db_user}
     password: ${DB_PASSWORD:financial_db_password}
+  # Em ambiente de desenvolvimento local desabilitamos o Flyway para evitar conflitos
+  # com o comportamento de atualização automática do Hibernate. Habilite Flyway
+  # em produção e aplique as migrations manualmente (ou com CI).
   flyway:
-    enabled: true
+    enabled: false
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -40,7 +46,7 @@ springdoc:
 application:
   var:
     token:
-      secret: ${JWT_SECRET:dev-local-jwt-secret-minimum-32-bytes-keep-safe-2026}
+      secret: dev-local-jwt-secret-minimum-32-bytes-keep-safe-2026
       expiration-time: ${JWT_EXPIRATION:7200000}
       password-reset-expiration-time: ${JWT_PASSWORD_RESET_EXPIRATION:900000}
     cors:

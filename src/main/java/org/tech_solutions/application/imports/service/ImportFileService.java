@@ -5,6 +5,9 @@ import org.tech_solutions.application.categories.model.Category;
 import org.tech_solutions.application.categories.repository.CategoryRepository;
 import org.tech_solutions.application.accounts.model.Account;
 import org.tech_solutions.application.accounts.repository.AccountRepository;
+import org.tech_solutions.application.transactions.enums.TransactionType;
+import org.tech_solutions.application.transactions.model.Transaction;
+import org.tech_solutions.application.transactions.service.TransactionService;
 
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
@@ -58,6 +61,7 @@ public class ImportFileService {
     private final AccountRepository accountRepository;
     private final ChatClient chatClient;
     private final CategoryRepository categoryRepository;
+    private final TransactionService transactionService;
 
     public ImportFileService(
             MinioClient minioClient,
@@ -66,7 +70,8 @@ public class ImportFileService {
             CurrentUserService currentUserService,
             AccountRepository accountRepository,
             ChatClient chatClient,
-            CategoryRepository categoryRepository) {
+            CategoryRepository categoryRepository,
+            TransactionService transactionService) {
         this.minioClient = minioClient;
         this.importFileRepository = importFileRepository;
         this.importedTransactionRepository = importedTransactionRepository;
@@ -74,6 +79,7 @@ public class ImportFileService {
         this.accountRepository = accountRepository;
         this.chatClient = chatClient;
         this.categoryRepository = categoryRepository;
+        this.transactionService = transactionService;
     }
 
     public void inicializarBucket() {
@@ -178,6 +184,74 @@ public class ImportFileService {
         }
     }
 
+    public int reprocessImportedTransactions(Long importId) {
+        ImportFile importFile = findById(importId);
+        List<ImportedTransaction> pendingTransactions = importedTransactionRepository
+                .findByImportFileIdAndProcessedFalseOrderByIdAsc(importId);
+
+        if (pendingTransactions.isEmpty()) {
+            return 0;
+        }
+
+        List<ParsedCsvRow> csvRows = readCsvRowsFromMinio(importFile);
+        if (csvRows.isEmpty()) {
+            throw new UploadOperationException("Nao foi possivel ler o CSV da importacao para reprocessar");
+        }
+
+        int total = Math.min(pendingTransactions.size(), csvRows.size());
+        int processedCount = 0;
+        List<ImportedTransaction> processedTransactions = new ArrayList<>();
+
+        for (int index = 0; index < total; index++) {
+            ImportedTransaction importedTransaction = pendingTransactions.get(index);
+            ParsedCsvRow csvRow = csvRows.get(index);
+
+            Account account = importedTransaction.getAccount();
+            if (account == null) {
+                throw new UploadOperationException("Conta original da importacao nao encontrada");
+            }
+
+            LocalDate rawDate = parseDate(csvRow.dateValue());
+            BigDecimal rawAmount = parseAmount(csvRow.amountValue());
+            if (rawDate == null || rawAmount == null) {
+                continue;
+            }
+
+            rawAmount = rawAmount.abs();
+            TransactionType transactionType = parseTransactionType(csvRow.typeValue(), rawAmount);
+            String description = csvRow.descriptionValue();
+
+            Category category = importedTransaction.getCategory();
+            if (category == null && csvRow.categoryValue() != null && !csvRow.categoryValue().isBlank()) {
+                category = findOrCreateCategory(csvRow.categoryValue().trim(), importFile.getUser().getId());
+            }
+            if (category == null) {
+                category = findOrCreateCategory(
+                        suggestCategoryWithAI(description, rawAmount, rawDate),
+                        importFile.getUser().getId());
+            }
+
+            Transaction transaction = new Transaction();
+            transaction.setTransactionDescription(description);
+            transaction.setAmount(rawAmount);
+            transaction.setTransactionDate(rawDate);
+            transaction.setTransactionType(transactionType);
+            transactionService.create(transaction, importFile.getUser().getId(), account.getId(), category != null ? category.getId() : null);
+
+            importedTransaction.setProcessed(true);
+            processedTransactions.add(importedTransaction);
+            processedCount++;
+        }
+
+        if (processedCount > 0) {
+            importedTransactionRepository.saveAll(processedTransactions);
+            importFile.setStatus(ImportStatus.COMPLETED);
+            importFileRepository.save(importFile);
+        }
+
+        return processedCount;
+    }
+
     public List<String> fetchCsvDescriptions(Long userId,
             LocalDate startDate,
             LocalDate endDate) {
@@ -244,16 +318,31 @@ public class ImportFileService {
                     continue;
                 }
 
-                LocalDate rawDate = parseDate(columns[0]);
-                BigDecimal rawAmount = parseAmount(columns[2]);
+                ParsedCsvRow parsedRow = parseCsvRow(columns);
+                if (parsedRow == null) {
+                    continue;
+                }
+
+                LocalDate rawDate = parseDate(parsedRow.dateValue());
+                BigDecimal rawAmount = parseAmount(parsedRow.amountValue());
                 if (rawDate == null || rawAmount == null) {
                     continue;
                 }
 
-                String description = columns[1].trim();
-                // IA sugere categoria
-                String suggestedCategoryName = suggestCategoryWithAI(description, rawAmount, rawDate);
+                rawAmount = rawAmount.abs();
+
+                String description = parsedRow.descriptionValue();
+                String suggestedCategoryName = resolveCategoryName(parsedRow.categoryValue(), description, rawAmount, rawDate);
                 Category category = findOrCreateCategory(suggestedCategoryName, userId);
+
+                TransactionType transactionType = parseTransactionType(parsedRow.typeValue(), rawAmount);
+
+                Transaction transaction = new Transaction();
+                transaction.setTransactionDescription(description);
+                transaction.setAmount(rawAmount);
+                transaction.setTransactionDate(rawDate);
+                transaction.setTransactionType(transactionType);
+                transactionService.create(transaction, userId, accountId, category.getId());
 
                 ImportedTransaction importedTransaction = new ImportedTransaction();
                 importedTransaction.setImportFile(importFile);
@@ -262,7 +351,7 @@ public class ImportFileService {
                 importedTransaction.setRawAmount(rawAmount);
                 importedTransaction.setRawDate(rawDate);
                 importedTransaction.setCategory(category);
-                importedTransaction.setProcessed(false);
+                importedTransaction.setProcessed(true);
                 importedTransactions.add(importedTransaction);
             }
         } catch (IOException e) {
@@ -272,6 +361,85 @@ public class ImportFileService {
         if (!importedTransactions.isEmpty()) {
             importedTransactionRepository.saveAll(importedTransactions);
         }
+    }
+
+    private List<ParsedCsvRow> readCsvRowsFromMinio(ImportFile importFile) {
+        try (InputStream stream = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(importFile.getFileName())
+                        .build());
+             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+
+            List<ParsedCsvRow> rows = new ArrayList<>();
+            String header = reader.readLine();
+            if (header == null) {
+                return rows;
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] columns = parseCsvLine(line);
+                ParsedCsvRow row = parseCsvRow(columns);
+                if (row != null) {
+                    rows.add(row);
+                }
+            }
+
+            return rows;
+        } catch (Exception e) {
+            handleMinioGetException(e);
+            throw new UploadOperationException("Nao foi possivel ler o CSV da importacao");
+        }
+    }
+
+    private String resolveCategoryName(String csvCategory, String description, BigDecimal amount, LocalDate date) {
+        if (csvCategory != null && !csvCategory.isBlank()) {
+            return csvCategory.trim();
+        }
+        return suggestCategoryWithAI(description, amount, date);
+    }
+
+    private TransactionType parseTransactionType(String csvType, BigDecimal amount) {
+        if (csvType != null && !csvType.isBlank()) {
+            String normalized = csvType.trim().toLowerCase();
+            if (normalized.startsWith("inc") || normalized.contains("receita")) {
+                return TransactionType.INCOME;
+            }
+            if (normalized.startsWith("exp") || normalized.contains("despesa")) {
+                return TransactionType.EXPENSE;
+            }
+        }
+
+        return TransactionType.EXPENSE;
+    }
+
+    private ParsedCsvRow parseCsvRow(String[] columns) {
+        if (columns == null) {
+            return null;
+        }
+
+        if (columns.length >= 5) {
+            return new ParsedCsvRow(
+                    columns[0].trim(),
+                    columns[1].trim(),
+                    columns[2].trim(),
+                    columns[3].trim(),
+                    columns[4].trim()
+            );
+        }
+
+        if (columns.length >= 3) {
+            return new ParsedCsvRow(
+                    columns[0].trim(),
+                    columns[1].trim(),
+                    null,
+                    columns[2].trim(),
+                    null
+            );
+        }
+
+        return null;
     }
 
     private String suggestCategoryWithAI(String description, BigDecimal amount, LocalDate date) {
@@ -343,10 +511,12 @@ public class ImportFileService {
 
     private BigDecimal parseAmount(String value) {
         try {
-            String normalized = value.trim()
-                    .replace("R$", "")
-                    .replace(".", "")
-                    .replace(",", ".");
+            String normalized = value.trim().replace("R$", "");
+            if (normalized.contains(",") && normalized.contains(".")) {
+                normalized = normalized.replace(".", "").replace(",", ".");
+            } else if (normalized.contains(",")) {
+                normalized = normalized.replace(",", ".");
+            }
             return new BigDecimal(normalized);
         } catch (Exception ignored) {
             return null;
@@ -395,5 +565,13 @@ public class ImportFileService {
         if (importFile.getUser() == null || !currentUserId.equals(importFile.getUser().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recurso nao pertence ao usuario autenticado");
         }
+    }
+
+    private record ParsedCsvRow(
+            String dateValue,
+            String descriptionValue,
+            String categoryValue,
+            String amountValue,
+            String typeValue) {
     }
 }

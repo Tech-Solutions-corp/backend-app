@@ -73,4 +73,15 @@ public class ImportController {
         importFileService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/reprocess")
+    public ResponseEntity<Map<String, Object>> reprocess(@PathVariable Long id) {
+        int processedCount = importFileService.reprocessImportedTransactions(id);
+        return ResponseEntity.ok(Map.of(
+                "message", processedCount > 0
+                        ? "Importacao reprocessada com sucesso"
+                        : "Nao havia transacoes pendentes para reprocessar",
+                "processedCount", processedCount
+        ));
+    }
 }

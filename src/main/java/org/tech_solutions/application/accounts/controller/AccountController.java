@@ -59,9 +59,10 @@ public class AccountController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
-            @RequestParam(value = "reassignToAccountId", required = false) Long reassignToAccountId) {
-        if (reassignToAccountId != null) {
-            accountService.delete(id, reassignToAccountId);
+            @RequestParam(value = "reassignToAccountId", required = false) Long reassignToAccountId,
+            @RequestParam(value = "reassignCategoryId", required = false) Long reassignCategoryId) {
+        if (reassignToAccountId != null || reassignCategoryId != null) {
+            accountService.delete(id, reassignToAccountId, reassignCategoryId);
         } else {
             accountService.delete(id);
         }

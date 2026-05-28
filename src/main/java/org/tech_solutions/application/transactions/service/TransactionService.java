@@ -17,6 +17,7 @@ import org.tech_solutions.application.user.repository.UserRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -113,6 +114,23 @@ public class TransactionService {
         applyBalanceChange(current.getAccount(), current.getTransactionType(), current.getAmount(), true);
         accountRepository.save(current.getAccount());
         transactionRepository.delete(current);
+    }
+
+    public void createInitialBalance(Account account, BigDecimal balance) {
+        if (balance == null || balance.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        User currentUser = currentUserService.requireCurrentUser();
+        Transaction transaction = new Transaction();
+        transaction.setUser(currentUser);
+        transaction.setAccount(account);
+        transaction.setTransactionDescription("Saldo Inicial");
+        transaction.setAmount(balance);
+        transaction.setTransactionType(TransactionType.INCOME);
+        transaction.setTransactionDate(java.time.LocalDate.now());
+        transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setCategory(null);
+        transactionRepository.save(transaction);
     }
 
     private User findUser(Long userId) {
