@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.tech_solutions.application.dashboard.dto.BalancePerMonthDto;
+import org.tech_solutions.application.dashboard.dto.ExpenseByCategoryDto;
 import org.tech_solutions.application.transactions.enums.TransactionType;
 import org.tech_solutions.application.transactions.model.Transaction;
 
@@ -68,4 +70,63 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("end") LocalDate end,
             @Param("type") TransactionType type,
             Pageable pageable);
+
+    @Query("""
+                SELECT new org.tech_solutions.application.dashboard.dto.ExpenseByCategoryDto(
+                       c.name,
+                       SUM(t.amount)
+                )
+                FROM   Transaction t
+                JOIN   t.category c
+                WHERE  c.type = org.tech_solutions.application.categories.enums.CategoryType.EXPENSE
+                       AND t.user.id = :userId
+                GROUP  BY c.id, c.name
+    """)
+    List<ExpenseByCategoryDto> findExpenseTotalsByCategory(
+            @Param("userId") Long userId
+    );
+
+    @Query("""
+    SELECT new org.tech_solutions.application.dashboard.dto.BalancePerMonthDto(
+        MONTH(t.transactionDate),
+        YEAR(t.transactionDate),
+        SUM(CASE WHEN t.transactionType = org.tech_solutions.application.transactions.enums.TransactionType.INCOME  THEN t.amount ELSE 0 END),
+        SUM(CASE WHEN t.transactionType = org.tech_solutions.application.transactions.enums.TransactionType.EXPENSE THEN t.amount ELSE 0 END)
+    )
+    FROM Transaction t
+    WHERE t.user.id = :userId
+      AND t.transactionDate >= :startDate
+    GROUP BY YEAR(t.transactionDate), MONTH(t.transactionDate)
+    ORDER BY YEAR(t.transactionDate), MONTH(t.transactionDate)
+""")
+    List<BalancePerMonthDto> findBalancePerMonth(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDate startDate
+    );
+
+    @Query("""
+    SELECT new org.tech_solutions.application.dashboard.dto.BalancePerMonthDto(
+            MONTH(t.transactionDate),
+            YEAR(t.transactionDate),
+            SUM(CASE WHEN t.transactionType = org.tech_solutions.application.transactions.enums.TransactionType.INCOME  THEN t.amount ELSE 0 END),
+            SUM(CASE WHEN t.transactionType = org.tech_solutions.application.transactions.enums.TransactionType.EXPENSE THEN t.amount ELSE 0 END)
+        )
+        FROM Transaction t
+        GROUP BY YEAR(t.transactionDate), MONTH(t.transactionDate)
+        ORDER BY YEAR(t.transactionDate), MONTH(t.transactionDate)
+    """)
+    List<BalancePerMonthDto> findAllBalancePerMonth();
+
+    @Query("""
+    SELECT new org.tech_solutions.application.dashboard.dto.ExpenseByCategoryDto(
+            c.name,
+            SUM(t.amount)
+        )
+        FROM Transaction t
+        JOIN t.category c
+        WHERE t.transactionType = org.tech_solutions.application.transactions.enums.TransactionType.EXPENSE
+        GROUP BY c.id, c.name
+        ORDER BY SUM(t.amount) DESC
+    """)
+    List<ExpenseByCategoryDto> findAllExpensesByCategory();
 }

@@ -3,6 +3,7 @@ package org.tech_solutions.application.aiinsights.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.tech_solutions.application.aiinsights.controller.dto.AiInsightHistoricalData;
 import org.tech_solutions.application.aiinsights.dto.AiInsightDataDTO;
 import org.tech_solutions.application.aiinsights.dto.AiInsightRequestDTO;
 import org.tech_solutions.application.aiinsights.dto.GenerateAiInsightRequestDTO;
@@ -10,8 +11,10 @@ import org.tech_solutions.application.aiinsights.generator.AiInsightGenerator;
 import org.tech_solutions.application.aiinsights.mapper.AiInsightMapper;
 import org.tech_solutions.application.aiinsights.model.AiInsight;
 import org.tech_solutions.application.aiinsights.service.AiInsightService;
+import org.tech_solutions.application.dashboard.dto.BalancePerMonthDto;
 import org.tech_solutions.application.security.CurrentUserService;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -87,5 +90,15 @@ public class AiInsightController {
                 request.insightType(),
                 request.specification());
         return ResponseEntity.status(201).body(AiInsightMapper.toDTO(generated));
+    }
+
+    @GetMapping("/historical-data")
+    public ResponseEntity<List<AiInsightHistoricalData>> generateInsightHistoricalData() {
+        List<AiInsightHistoricalData> insights = aiInsightService.generateInsightHistoricalData();
+
+        if (insights.isEmpty()) {
+            return ResponseEntity.status(204).body(Collections.emptyList());
+        }
+        return ResponseEntity.ok(insights);
     }
 }
