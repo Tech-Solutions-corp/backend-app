@@ -232,12 +232,12 @@ public class ImportFileService {
 
                 Category category = importedTransaction.getCategory();
                 if (category == null && csvRow.categoryValue() != null && !csvRow.categoryValue().isBlank()) {
-                    category = findOrCreateCategory(csvRow.categoryValue().trim(), importFile.getUser().getId());
+                    category = findOrCreateCategory(csvRow.categoryValue().trim(), importFile.getUser().getId(), transactionType);
                 }
                 if (category == null) {
                     category = findOrCreateCategory(
                             suggestCategoryWithAI(description, rawAmount, rawDate),
-                            importFile.getUser().getId());
+                            importFile.getUser().getId(), transactionType);
                 }
 
                 if (category == null) {
@@ -383,7 +383,7 @@ public class ImportFileService {
                         lineNumber, rawAmount, transactionType, parsedRow.amountValue());
 
                 String suggestedCategoryName = resolveCategoryName(parsedRow.categoryValue(), description, rawAmount, rawDate);
-                Category category = findOrCreateCategory(suggestedCategoryName, userId);
+                Category category = findOrCreateCategory(suggestedCategoryName, userId, transactionType);
 
                 if (category == null) {
                     LOGGER.warn("Linha {}: nao foi possivel associar categoria '{}'", lineNumber, suggestedCategoryName);
@@ -626,7 +626,7 @@ public class ImportFileService {
         }
     }
 
-    private Category findOrCreateCategory(String categoryName, Long userId) {
+    private Category findOrCreateCategory(String categoryName, Long userId, TransactionType transactionType) {
         String finalCategoryName;
 
         if (categoryName == null || categoryName.isBlank()) {
@@ -650,10 +650,19 @@ public class ImportFileService {
 
         try {
             List<Category> userCategories = categoryRepository.findByUserId(userId);
+
+            // Preferir categoria que combine nome + tipo (evita reuso de categoria de despesa para receita)
+            org.tech_solutions.application.categories.enums.CategoryType desiredType =
+                    transactionType == TransactionType.INCOME
+                            ? org.tech_solutions.application.categories.enums.CategoryType.INCOME
+                            : org.tech_solutions.application.categories.enums.CategoryType.EXPENSE;
+
+            // 1) Procurar por nome + tipo
             return userCategories.stream()
-                    .filter(cat -> cat.getName().equalsIgnoreCase(searchName))
+                    .filter(cat -> cat.getName().equalsIgnoreCase(searchName) && cat.getType() == desiredType)
                     .findFirst()
                     .orElseGet(() -> {
+                        // 2) Se não existe, criar nova categoria com o tipo desejado
                         try {
                             Category newCat = new Category();
                             newCat.setName(searchName);
@@ -669,9 +678,9 @@ public class ImportFileService {
                                 return null;
                             }
 
-                            newCat.setType(org.tech_solutions.application.categories.enums.CategoryType.EXPENSE);
+                            newCat.setType(desiredType);
                             newCat.setCreatedAt(LocalDateTime.now());
-                            LOGGER.info("Categoria normalizada criada: '{}' (original suggestion)", searchName);
+                            LOGGER.info("Categoria normalizada criada: '{}' (original suggestion) tipo: {}", searchName, desiredType);
                             return categoryRepository.save(newCat);
                         } catch (Exception e) {
                             LOGGER.error("Erro ao criar categoria {}", searchName, e);
