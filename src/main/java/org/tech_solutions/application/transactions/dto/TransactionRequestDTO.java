@@ -15,7 +15,6 @@ public record TransactionRequestDTO(
         Long categoryId,
         String transactionDescription,
         @NotNull(message = "'amount' nao pode ser nulo")
-        @DecimalMin(value = "0.01", message = "'amount' deve ser maior que zero")
         BigDecimal amount,
         @NotNull(message = "'transactionDate' nao pode ser nulo")
         LocalDate transactionDate,

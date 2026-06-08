@@ -31,12 +31,16 @@ public class ImportController {
     }
 
     @PostMapping("/{userId}/upload")
-    public ResponseEntity<Map<String, String>> upload(
+    public ResponseEntity<Map<String, Object>> upload(
             @PathVariable Long userId,
             @RequestParam("file") MultipartFile file,
             @RequestParam("accountId") Long accountId) {
         importFileService.upload(file, userId, accountId);
-        return ResponseEntity.status(200).body(Map.of("message", "Extrato carregado com sucesso"));
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Extrato carregado com sucesso");
+        response.put("info", "Campos como 'descrição' não são registrados como valores das transações, " +
+                "mas são processados para classificação automática de categorias e rastreabilidade");
+        return ResponseEntity.status(200).body(response);
     }
 
     @GetMapping

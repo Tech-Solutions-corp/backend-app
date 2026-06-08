@@ -224,9 +224,11 @@ public class ImportFileService {
                     continue;
                 }
 
-                rawAmount = rawAmount.abs();
-                TransactionType transactionType = parseTransactionType(csvRow.typeValue(), rawAmount);
                 String description = csvRow.descriptionValue();
+                TransactionType transactionType = parseTransactionType(csvRow.typeValue(), rawAmount, description);
+                
+                // Usar o valor absoluto APENAS para armazenar (o sinal foi usado para determinar o tipo)
+                rawAmount = rawAmount.abs();
 
                 Category category = importedTransaction.getCategory();
                 if (category == null && csvRow.categoryValue() != null && !csvRow.categoryValue().isBlank()) {
@@ -255,7 +257,8 @@ public class ImportFileService {
                 processedTransactions.add(importedTransaction);
                 processedCount++;
 
-                LOGGER.debug("Transacao {} reprocessada com sucesso", importedTransaction.getId());
+                LOGGER.debug("Transacao {} reprocessada com sucesso. Valor registrado: R$ {} | Descrição (metadata): {}", 
+                        importedTransaction.getId(), rawAmount, description);
             } catch (Exception e) {
                 LOGGER.error("Erro ao reprocessar transacao no indice {}", index, e);
                 failedCount++;
@@ -371,9 +374,14 @@ public class ImportFileService {
                     continue;
                 }
 
-                rawAmount = rawAmount.abs();
-
                 String description = parsedRow.descriptionValue();
+                TransactionType transactionType = parseTransactionType(parsedRow.typeValue(), rawAmount, description);
+                
+                // Usar o valor absoluto APENAS para armazenar (o sinal foi usado para determinar o tipo)
+                rawAmount = rawAmount.abs();
+                LOGGER.debug("Linha {}: Valor identificado = R$ {} ({}) | Campo original = '{}'", 
+                        lineNumber, rawAmount, transactionType, parsedRow.amountValue());
+
                 String suggestedCategoryName = resolveCategoryName(parsedRow.categoryValue(), description, rawAmount, rawDate);
                 Category category = findOrCreateCategory(suggestedCategoryName, userId);
 
@@ -382,8 +390,6 @@ public class ImportFileService {
                     skippedLines++;
                     continue;
                 }
-
-                TransactionType transactionType = parseTransactionType(parsedRow.typeValue(), rawAmount);
 
                 try {
                     Transaction transaction = new Transaction();
@@ -404,7 +410,8 @@ public class ImportFileService {
                     importedTransactions.add(importedTransaction);
                     processedLines++;
 
-                    LOGGER.debug("Linha {} processada com sucesso", lineNumber);
+                    LOGGER.debug("Linha {} processada com sucesso. Valor registrado: R$ {} | Descrição (metadata): {}", 
+                            lineNumber, rawAmount, description);
                 } catch (Exception e) {
                     LOGGER.error("Linha {}: erro ao criar transacao", lineNumber, e);
                     skippedLines++;
@@ -460,7 +467,8 @@ public class ImportFileService {
         return suggestCategoryWithAI(description, amount, date);
     }
 
-    private TransactionType parseTransactionType(String csvType, BigDecimal amount) {
+    private TransactionType parseTransactionType(String csvType, BigDecimal amount, String description) {
+        // Primeiro, tenta usar o tipo explícito do CSV
         if (csvType != null && !csvType.isBlank()) {
             String normalized = csvType.trim().toLowerCase();
             if (normalized.startsWith("inc") || normalized.contains("receita")) {
@@ -469,6 +477,41 @@ public class ImportFileService {
             if (normalized.startsWith("exp") || normalized.contains("despesa")) {
                 return TransactionType.EXPENSE;
             }
+        }
+
+        // Determina o tipo baseado no sinal do valor (critério principal)
+        TransactionType typeByAmount = null;
+        if (amount != null) {
+            typeByAmount = amount.compareTo(BigDecimal.ZERO) > 0 ? TransactionType.INCOME : TransactionType.EXPENSE;
+        }
+
+        // Valida contra a descrição se disponível
+        if (description != null && !description.isBlank()) {
+            String descNorm = description.toLowerCase();
+            
+            // Palavras-chave de RECEITA
+            if (descNorm.contains("recebida") || descNorm.contains("recebido") || 
+                descNorm.contains("transferência recebida") || descNorm.contains("transferencia recebida") ||
+                descNorm.contains("pix recebido") || descNorm.contains("depósito") || descNorm.contains("deposito") ||
+                descNorm.contains("entrada") || descNorm.contains("crédito") || descNorm.contains("credito") ||
+                descNorm.contains("salário") || descNorm.contains("salario") ||
+                descNorm.contains("ganho") || descNorm.contains("renda")) {
+                return TransactionType.INCOME;
+            }
+            
+            // Palavras-chave de DESPESA
+            if (descNorm.contains("despesa") || descNorm.contains("pagamento") || 
+                descNorm.contains("transferência enviada") || descNorm.contains("transferencia enviada") ||
+                descNorm.contains("débito") || descNorm.contains("debito") || 
+                descNorm.contains("saque") || descNorm.contains("compra") ||
+                descNorm.contains("tarifa") || descNorm.contains("taxa")) {
+                return TransactionType.EXPENSE;
+            }
+        }
+
+        // Se tem valor, usar como critério principal
+        if (typeByAmount != null) {
+            return typeByAmount;
         }
 
         return TransactionType.EXPENSE;
@@ -570,6 +613,9 @@ public class ImportFileService {
     private String suggestCategoryWithAI(String description, BigDecimal amount, LocalDate date) {
         String prompt = "Sugira a categoria mais adequada para a seguinte transação bancária: " +
                 "Descrição: '" + description + "', Valor: '" + amount + "', Data: '" + date + "'. " +
+                "\n\nIMPORTANTE: A descrição fornecida é apenas para CONTEXTO e classificação da categoria. " +
+                "NÃO registre a descrição como um valor monetário. " +
+                "Use apenas a descrição para entender melhor o tipo de transação e sugerir a categoria apropriada.\n\n" +
                 "Responda apenas com o nome da categoria, sem explicações.";
         try {
             String result = chatClient.prompt().user(prompt).call().content();
@@ -595,6 +641,9 @@ public class ImportFileService {
             LOGGER.warn("Categoria detectada como inválida (uuid/numero/tamanho): {} - usando 'Outros' em seu lugar", finalCategoryName);
             finalCategoryName = "Outros";
         }
+        
+        // Normalizar categoria para consolidar variações similares
+        finalCategoryName = normalizeCategoryName(finalCategoryName);
 
         // 'searchName' é efetivamente final e pode ser capturado por lambdas/closures
         final String searchName = finalCategoryName;
@@ -622,6 +671,7 @@ public class ImportFileService {
 
                             newCat.setType(org.tech_solutions.application.categories.enums.CategoryType.EXPENSE);
                             newCat.setCreatedAt(LocalDateTime.now());
+                            LOGGER.info("Categoria normalizada criada: '{}' (original suggestion)", searchName);
                             return categoryRepository.save(newCat);
                         } catch (Exception e) {
                             LOGGER.error("Erro ao criar categoria {}", searchName, e);
@@ -634,8 +684,76 @@ public class ImportFileService {
         }
     }
 
+    private String normalizeCategoryName(String categoryName) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return "Outros";
+        }
+        
+        String normalized = categoryName.trim().toLowerCase();
+        
+        // Mapeamento de sinônimos e variações para consolidar categorias
+        // Agrupa variações similares em uma categoria principal
+        if (normalized.contains("serviço") || normalized.contains("servico")) {
+            if (normalized.contains("financeiro") || normalized.contains("financeiro")) {
+                return "Serviços Financeiros";
+            }
+            if (normalized.contains("online")) {
+                return "Serviços Online";
+            }
+            if (normalized.contains("assinatura")) {
+                return "Serviços de Assinatura";
+            }
+            // Genérico para todos os outros serviços
+            return "Serviços";
+        }
+        
+        if (normalized.contains("transação") || normalized.contains("transacao") || 
+            normalized.contains("transferência") || normalized.contains("transferencia")) {
+            if (normalized.contains("entre conta")) {
+                return "Transferência Entre Contas";
+            }
+            return "Transações";
+        }
+        
+        if (normalized.contains("despesa") || normalized.contains("gasto")) {
+            if (normalized.contains("diversos") || normalized.contains("diversa")) {
+                return "Despesas Diversas";
+            }
+            if (normalized.contains("geral")) {
+                return "Despesas Gerais";
+            }
+            return "Despesas";
+        }
+        
+        if (normalized.contains("taxa") || normalized.contains("tarifа")) {
+            return "Taxas Bancárias";
+        }
+        
+        if (normalized.contains("compra") || normalized.contains("bem") || normalized.contains("durável")) {
+            return "Compras";
+        }
+        
+        if (normalized.contains("outro") || normalized.contains("desconhecido") || 
+            normalized.contains("diversos")) {
+            return "Outros";
+        }
+        
+        // Se não corresponde a nenhum padrão, manter original mas limpo
+        return categoryName.trim();
+    }
+
     private String[] parseCsvLine(String line) {
         List<String> columns = new ArrayList<>();
+        
+        // Detectar separador: TAB ou VÍRGULA
+        String separator = line.contains("\t") ? "\t" : ",";
+        
+        // Se for TAB, fazer split simples
+        if (separator.equals("\t")) {
+            return line.split("\t", -1);
+        }
+        
+        // Para VÍRGULA, usar parser complexo que respeita aspas
         StringBuilder current = new StringBuilder();
         boolean insideQuotes = false;
 
@@ -748,6 +866,16 @@ public class ImportFileService {
             }
 
             BigDecimal result = new BigDecimal(s);
+            
+            // IMPORTANTE: Rejeitar números inteiros muito grandes sem decimais
+            // (típicos de IDs, não valores monetários)
+            // Um valor monetário deve ter no máximo 2 casas decimais
+            // Se não tem ponto/vírgula original, rejeitar números > 999.999 (acima disso é provavelmente ID)
+            if (!value.contains(".") && !value.contains(",") && result.abs().compareTo(new BigDecimal("999999")) > 0) {
+                LOGGER.debug("Rejeitado como valor monetário (identificador numérico?): {}", value);
+                return null;
+            }
+            
             return negative ? result.negate() : result;
         } catch (Exception ignored) {
             return null;
